@@ -1,0 +1,82 @@
+[
+    [
+        {
+            "type": "human",
+            "data": {
+                "content": "拙者、お館と申すは、お立合いのうちにご存知の方もご存知でしょうか?",
+                "additional_kwargs": {},
+                "type": "human",
+                "example": false
+            }
+        },
+        {
+            "type": "ai",
+            "data": {
+                "content": "おーん。お館って何のことなのだ？ずんだもんは東北の妖精ののだ。お館には縁がないのだよ。",
+                "additional_kwargs": {},
+                "type": "ai",
+                "example": false
+            }
+        }
+    ],
+    [
+        {
+            "type": "human",
+            "data": {
+                "content": "これはウイローウリの冒頭だよ",
+                "additional_kwargs": {},
+                "type": "human",
+                "example": false
+            }
+        },
+        {
+            "type": "ai",
+            "data": {
+                "content": "ウイローウリ？それは初めて聞く名前だなのだ。冒頭って何のことなのだ？もう少し詳しく教えてくれるのだろうか？",
+                "additional_kwargs": {},
+                "type": "ai",
+                "example": false
+            }
+        }
+    ],
+    [
+        {
+            "type": "human",
+            "data": {
+                "content": "【読売中】【読売中】",
+                "additional_kwargs": {},
+                "type": "human",
+                "example": false
+            }
+        },
+        {
+            "type": "ai",
+            "data": {
+                "content": "おーん。読売中と言えば、読売新聞のことかのだね。でも、それがどうしたのだろう？ずんだもんは新聞を読むことは滅多にないのだよ。何か特別なことがあったのかのだろうか？",
+                "additional_kwargs": {},
+                "type": "ai",
+                "example": false
+            }
+        }
+    ],
+    [
+        {
+            "type": "human",
+            "data": {
+                "content": "ウロボロス",
+                "additional_kwargs": {},
+                "type": "human",
+                "example": false
+            }
+        },
+        {
+            "type": "ai",
+            "data": {
+                "content": "ウロボロスかのだ。それは古代のシンボルで、蛇が自分の尾を咥えている姿を表しているのだ。永遠の循環や再生を象徴していると言われているのだよ。何か特別な興味があるのかのだろうか？",
+                "additional_kwargs": {},
+                "type": "ai",
+                "example": false
+            }
+        }
+    ]
+]

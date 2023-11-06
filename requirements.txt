@@ -1,0 +1,21 @@
+openai
+tiktoken
+psutil
+PyAudio >= 0.2.13
+webrtcvad >= 2.0.10
+python-dotenv
+google-api-python-client
+git+https://github.com/misja/python-boilerpipe
+numpy
+tqdm
+more-itertools
+transformers>=4.19.0
+ffmpeg-python==0.2.0
+SpeechRecognition
+pydub
+git+https://github.com/openai/whisper.git
+--extra-index-url https://download.pytorch.org/whl/cu113
+torch
+pynput
+faster-whisper
+pyyaml
