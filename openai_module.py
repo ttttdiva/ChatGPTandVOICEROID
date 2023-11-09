@@ -42,26 +42,6 @@ class OpenAIModule:
         # スレッドの作成
         self.thread = self.client.beta.threads.create()
 
-        # スレッドIDを保存
-        file_path = f"./temp/{ai_name}.yaml"
-
-        # ファイルの存在を確認
-        if not os.path.exists(file_path):
-            # ファイルが存在しない場合、新たにファイルを作成
-            with open(file_path, "w", encoding="utf-8") as f:
-                pass
-
-        # YAMLファイルを読み込む
-        with open(file_path, "r", encoding="utf-8") as f:
-            data = yaml.safe_load(f) or {}
-
-        # ディクショナリに新たな値を追加または更新する
-        data['thread_id'] = self.thread.id
-
-        # 更新されたディクショナリをYAMLファイルに書き戻す
-        with open(file_path, "w", encoding="utf-8") as f:
-            yaml.dump(data, f, allow_unicode=True)
-
     # ChatGPTに問い合わせ
     def get_response(self, user_input, model=None):
         if model is None:
@@ -133,7 +113,25 @@ class OpenAIModule:
                 json.dump(existing_data, conversation_file, ensure_ascii=False, indent=4)
 
     def save_summary_conversation(self):
-        return self.instance.save_summary_conversation()
+        # スレッドIDを保存
+        file_path = f"./temp/{self.ai_name}.yaml"
+
+        # ファイルの存在を確認
+        if not os.path.exists(file_path):
+            # ファイルが存在しない場合、新たにファイルを作成
+            with open(file_path, "w", encoding="utf-8") as f:
+                pass
+
+        # YAMLファイルを読み込む
+        with open(file_path, "r", encoding="utf-8") as f:
+            data = yaml.safe_load(f) or {}
+
+        # ディクショナリに新たな値を追加または更新する
+        data['thread_id'] = self.thread.id
+
+        # 更新されたディクショナリをYAMLファイルに書き戻す
+        with open(file_path, "w", encoding="utf-8") as f:
+            yaml.dump(data, f, allow_unicode=True)
 
     def parse_date_from_filename(self, file_path):
         return self.instance.parse_date_from_filename(file_path)
@@ -142,7 +140,9 @@ class OpenAIModule:
         return self.instance.get_latest_file(directory_path, ai_name, file_type)
 
     def load_previous_chat(self):
-        return self.instance.load_previous_chat()
+        with open(f"./temp/{self.ai_name}.yaml", 'r') as f:
+            temp_p = yaml.safe_load(f)
+        self.thread = self.client.beta.threads.retrieve(temp_p["thread_id"])
 
     def add_messages(self, user_input, return_msg):
         return self.instance.add_messages(user_input, return_msg)

@@ -72,7 +72,7 @@ def main():
                 tts_manager.talk_message("End",voice_cid)
                 print('talk終了')
                 # 会話ログと要約を保存
-                # llm_manager.save_summary_conversation()
+                llm_manager.save_summary_conversation()
                 # tts_manager.talk_message("要約完了", voice_cid)
                 
                 if voice_msg in ["PCをシャットダウン", "おやすみ"]:
@@ -84,7 +84,7 @@ def main():
                 
                 # ログファイルから前回の会話を読み込んでmessagesに追加
                 llm_manager.load_previous_chat()
-                voice_msg = "前回はどんなことを話していたっけ？30文字程度で教えて。"
+                voice_msg = "今までどんなことを話していたっけ？30文字程度で教えて。"
             # elif "検索して" in voice_msg:
             #     return_msg = web_search.bing_gpt(ai_chara, ai_dialogues, voice_msg)
             #     llm_manager.add_messages(voice_msg, return_msg)
