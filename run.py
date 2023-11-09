@@ -55,9 +55,8 @@ def main():
             
             # キャラプロンプトを読み込み
             llm_manager = LLMManager(ai_chara, ai_dialogues, config["llm_model"], ai_name[0])
-            web_search = WebSearch(google_api_key, cx, ai_name)
+            # web_search = WebSearch(google_api_key, cx, ai_name)
             
-            print(llm_manager.conversation.prompt)
             tts_manager.talk_message(greet,voice_cid)
 
         else:
@@ -73,8 +72,8 @@ def main():
                 tts_manager.talk_message("End",voice_cid)
                 print('talk終了')
                 # 会話ログと要約を保存
-                llm_manager.save_summary_conversation()
-                tts_manager.talk_message("要約完了", voice_cid)
+                # llm_manager.save_summary_conversation()
+                # tts_manager.talk_message("要約完了", voice_cid)
                 
                 if voice_msg in ["PCをシャットダウン", "おやすみ"]:
                     tts_manager.talk_message("おやすみなさい！",voice_cid)
@@ -86,11 +85,11 @@ def main():
                 # ログファイルから前回の会話を読み込んでmessagesに追加
                 llm_manager.load_previous_chat()
                 voice_msg = "前回はどんなことを話していたっけ？30文字程度で教えて。"
-            elif "検索して" in voice_msg:
-                return_msg = web_search.bing_gpt(ai_chara, ai_dialogues, voice_msg)
-                llm_manager.add_messages(voice_msg, return_msg)
-                tts_manager.talk_message(return_msg, voice_cid)
-                continue
+            # elif "検索して" in voice_msg:
+            #     return_msg = web_search.bing_gpt(ai_chara, ai_dialogues, voice_msg)
+            #     llm_manager.add_messages(voice_msg, return_msg)
+            #     tts_manager.talk_message(return_msg, voice_cid)
+            #     continue
             elif tts_manager.hallucination(voice_msg):
                 continue
 

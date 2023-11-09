@@ -39,7 +39,7 @@ class TTSManager:
             print("VOICEVOX.exe は実行中です。")
         else:
             subprocess.Popen(self.VOICEVOX)
-            sleep(10)
+            # sleep(10)
 
         # AssistantSeika.exe が実行中かどうかを判定
         parts = self.Assistant_Seika.split("\\")
@@ -79,7 +79,7 @@ class TTSManager:
 
     # 無言時に発生する幻聴をスルー
     def hallucination(self, voice_msg):
-        pattern = "^(ご視聴ありがとうございました.?|バイバイ|)$"
+        pattern = "^(ご視聴ありがとうございました.?|ありがとうございました.?|バイバイ|)$"
         if re.search(pattern, voice_msg):
             return True
         else:

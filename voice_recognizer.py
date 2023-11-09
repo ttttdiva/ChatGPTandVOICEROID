@@ -24,7 +24,7 @@ class VoiceRecognizer:
     
     def initialize_model(self):
         if self.model_type == "whisper":
-            self.model = "large"
+            self.model = "large-v3"
             self.english = False
             self.verbose = False
             self.energy = 300
@@ -34,7 +34,7 @@ class VoiceRecognizer:
             self.temp_dir = tempfile.mkdtemp() if self.save_file else None
 
             self.r = sr.Recognizer()
-            self.mic = sr.Microphone(sample_rate=16000, device_index=self.device_index)
+            self.mic = sr.Microphone(sample_rate=12000, device_index=self.device_index)
             self.r.energy_threshold = self.energy
             self.r.pause_threshold = self.pause
             self.r.dynamic_energy_threshold = self.dynamic_energy
@@ -61,14 +61,14 @@ class VoiceRecognizer:
         if self.text_only is True:
             return input("User: ")
 
-        if self.model_type == "whisper":
-            return self.recognize_whisper()
-        
-        elif self.model_type == "Google Speech Recognition":
-            return self.recognize_google_speech()
-        
-        elif self.model_type == "faster-whisper":
-            return self.recognize_faster_whisper()
+        method_map = {
+            "whisper": self.recognize_whisper,
+            "google_speech": self.recognize_google_speech,
+            "faster_whisper": self.recognize_faster_whisper
+        }
+        method = method_map[self.model_type]
+        return method()
+
 
     def recognize_whisper(self):
         english = self.english

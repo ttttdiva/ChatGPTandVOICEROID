@@ -19,3 +19,4 @@ torch
 pynput
 faster-whisper
 pyyaml
+langchain

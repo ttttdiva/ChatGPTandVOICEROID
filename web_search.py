@@ -43,10 +43,10 @@ class WebSearch:
 全く分からない場合はそのように伝えてください。
 また、今回に限り必要であれば200文字程度で回答してください。
 """
-        gpt_chat = LLMManager(prompt, summary_prompt, model="gpt-3.5-turbo", ai_name=self.ai_name[0])
+        gpt_chat = LLMManager(prompt, summary_prompt, model="gpt-4-1106-preview", ai_name=self.ai_name[0])
         
         # キャラプロンプト＋要約
-        m = gpt_chat.get_response(summary, model="gpt-4")
+        m = gpt_chat.get_response(summary, model="gpt-4-1106-preview")
 
         current_time = datetime.now().strftime("%Y%m%d_%H%M%S")
         filename = f"./log/search/{search_word}_{current_time}.log"
