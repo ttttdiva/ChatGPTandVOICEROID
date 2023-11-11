@@ -39,7 +39,6 @@ class TTSManager:
             print("VOICEVOX.exe は実行中です。")
         else:
             subprocess.Popen(self.VOICEVOX)
-            # sleep(10)
 
         # AssistantSeika.exe が実行中かどうかを判定
         parts = self.Assistant_Seika.split("\\")

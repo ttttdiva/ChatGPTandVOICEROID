@@ -7,6 +7,7 @@ import numpy as np
 import speech_recognition as sr
 import torch
 import whisper
+import yaml
 from pydub import AudioSegment
 
 from audio_transcriber import AudioTranscriber
@@ -14,11 +15,16 @@ from audio_utils import display_valid_input_devices, get_valid_input_devices
 
 
 class VoiceRecognizer:
-    def __init__(self, model_type, device_index, text_only):
-        self.text_only = text_only
-        if text_only is True:
+    def __init__(self):
+        # 設定ファイルを読み込み
+        with open("config.yaml", 'r') as f:
+            config = yaml.safe_load(f)
+        self.text_only = config['Text_Only']
+        self.model_type = config['record_model']
+        device_index = config['device_index']
+
+        if self.text_only is True:
             return
-        self.model_type = model_type
         self.device_type(device_index)
         self.initialize_model()
     

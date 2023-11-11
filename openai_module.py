@@ -9,11 +9,13 @@ from openai import OpenAI
 
 class OpenAIModule:
     # Placeholder methods for OpenAI module
-    def __init__(self, system_prompt, model, ai_name):
+    def __init__(self, system_prompt, ai_name, web_search, model="gpt-3.5-1106"):
         self.first_execution = True
-        self.model = model
         self.system_prompt = system_prompt
         self.ai_name = ai_name
+        # Websearchインスタンス呼び出し
+        self.web_search = web_search
+        self.model = model
         # OpenAIクライアントの初期化
         self.client = OpenAI()
         
@@ -34,7 +36,26 @@ class OpenAIModule:
             assistant = self.client.beta.assistants.create(
                 name=ai_name,
                 instructions=system_prompt,
-                tools=[{"type": "retrieval"}],
+                tools=[
+                    {"type": "retrieval"},
+                    {"type": "code_interpreter"},
+                    {"type": "function",
+                    "function": {
+                        "name": "web_search",
+                        "description": "Search the Internet for information that is unclear.",
+                        "parameters": {
+                            "type": "object",
+                            "properties": {
+                                "search_word": {
+                                    "type": "string",
+                                    "description": "Invented search terms. e.g. San Francisco CA"
+                                }
+                            },
+                            "required": ["search_word"]
+                        }
+                    }
+                },
+                ],
                 model=model,
             )
             self.assistant_id = assistant.id
@@ -67,7 +88,35 @@ class OpenAIModule:
             )
             if run.status == "completed":
                 break
-            time.sleep(1)
+            elif run.status == "queue":
+                pass
+            elif run.status == "requires_action":
+                tool_calls = run.required_action.submit_tool_outputs.tool_calls
+                # 全てのtool_callの結果を保存するリストを準備
+                outputs_to_submit = []
+                for tool_call in tool_calls:
+                    function_name = tool_call.function.name
+                    arguments = tool_call.function.arguments
+                    if function_name == "web_search":
+                        # web_searchを実行して結果を得る
+                        arguments = json.loads(arguments)
+                        arguments = self.decode_unicode_escapes(arguments["search_word"])
+                        print(f"search_word: {arguments}")
+                        result = self.web_search.bing_gpt(arguments, self.system_prompt)
+                        # 結果をリストに追加
+                        outputs_to_submit.append({
+                            "tool_call_id": tool_call.id,
+                            "output": result,
+                        })
+                
+                # 全ての結果を一度に送る
+                if outputs_to_submit:
+                    run = self.client.beta.threads.runs.submit_tool_outputs(
+                        thread_id=self.thread.id,
+                        run_id=run.id,
+                        tool_outputs=outputs_to_submit
+                    )
+            time.sleep(0.1)
 
         # 完了したメッセージを取得
         messages = self.client.beta.threads.messages.list(
@@ -79,6 +128,12 @@ class OpenAIModule:
 
         # 最後のメッセージの内容を返す
         return return_msg
+
+    def decode_unicode_escapes(self, s):
+        if '\\u' in s:
+            return s.encode('utf-8').decode('unicode_escape')
+        else:
+            return s
 
     def summary_conversation(self, dict_messages, previous_summary):
         return self.instance.summary_conversation(dict_messages, previous_summary)
@@ -112,7 +167,7 @@ class OpenAIModule:
             with open(new_file_path, "w", encoding='utf-8') as conversation_file:
                 json.dump(existing_data, conversation_file, ensure_ascii=False, indent=4)
 
-    def save_summary_conversation(self):
+    def end_conversation(self):
         # スレッドIDを保存
         file_path = f"./temp/{self.ai_name}.yaml"
 

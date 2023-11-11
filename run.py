@@ -12,7 +12,6 @@ from character_manager import CharacterManager
 from llm_manager import LLMManager
 from tts_manager import TTSManager
 from voice_recognizer import VoiceRecognizer
-from web_search import WebSearch
 
 # 環境変数を読み込み
 _ = load_dotenv(find_dotenv())
@@ -25,17 +24,8 @@ except KeyError as e:
     print(f"環境変数{e}が設定されていません。")
     input()
 
-# 設定ファイルを読み込み
-with open("config.yaml", 'r') as f:
-    config = yaml.safe_load(f)
-
-# 音声認識モデルの選択
-record_moel = config['record_model']
-device_index = config['device_index']
-text_only = config['Text_Only']
-
 character_manager = CharacterManager()
-voice_recognizer = VoiceRecognizer(record_moel, device_index, text_only)
+voice_recognizer = VoiceRecognizer()
 tts_manager = TTSManager()
 
 def main():
@@ -54,8 +44,7 @@ def main():
             tts_manager.tts_type = tts_type
             
             # キャラプロンプトを読み込み
-            llm_manager = LLMManager(ai_chara, ai_dialogues, config["llm_model"], ai_name[0])
-            # web_search = WebSearch(google_api_key, cx, ai_name)
+            llm_manager = LLMManager(ai_chara, ai_dialogues, google_api_key, cx, ai_name)
             
             tts_manager.talk_message(greet,voice_cid)
 
@@ -72,8 +61,9 @@ def main():
                 tts_manager.talk_message("End",voice_cid)
                 print('talk終了')
                 # 会話ログと要約を保存
-                llm_manager.save_summary_conversation()
-                # tts_manager.talk_message("要約完了", voice_cid)
+                end = llm_manager.end_conversation()
+                if end:
+                    tts_manager.talk_message(end,voice_cid)
                 
                 if voice_msg in ["PCをシャットダウン", "おやすみ"]:
                     tts_manager.talk_message("おやすみなさい！",voice_cid)
@@ -85,11 +75,10 @@ def main():
                 # ログファイルから前回の会話を読み込んでmessagesに追加
                 llm_manager.load_previous_chat()
                 voice_msg = "今までどんなことを話していたっけ？30文字程度で教えて。"
-            # elif "検索して" in voice_msg:
-            #     return_msg = web_search.bing_gpt(ai_chara, ai_dialogues, voice_msg)
-            #     llm_manager.add_messages(voice_msg, return_msg)
-            #     tts_manager.talk_message(return_msg, voice_cid)
-            #     continue
+            elif "検索して" in voice_msg:
+                return_msg = llm_manager.get_response(voice_msg)
+                tts_manager.talk_message(return_msg, voice_cid)
+                continue
             elif tts_manager.hallucination(voice_msg):
                 continue
 

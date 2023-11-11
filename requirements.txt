@@ -20,3 +20,4 @@ pynput
 faster-whisper
 pyyaml
 langchain
+chromedriver-binary==119.0.6045.105.0

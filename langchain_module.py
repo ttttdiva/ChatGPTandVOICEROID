@@ -16,13 +16,18 @@ from langchain.schema import messages_from_dict, messages_to_dict
 
 
 class LangChainModule:
-    def __init__(self, system_prompt, model, ai_name):
+    def __init__(self, system_prompt, ai_name, web_search, model="LlamaForCausalLM"):
         self.first_execution = True
-        self.model = model
         self.system_prompt = system_prompt
         self.ai_name = ai_name
+        # Websearchインスタンス呼び出し
+        self.web_search = web_search
+        self.model = model
         
+        # OpenAIモデルを指定
         self.chat = ChatOpenAI(model_name=model, temperature=0.5)
+        # Websearchインスタンス呼び出し
+        self.web_search = web_search
 
         # memoryを定義
         self.memory = ConversationSummaryBufferMemory(
@@ -99,7 +104,7 @@ class LangChainModule:
             with open(new_file_path, "w", encoding='utf-8') as conversation_file:
                 json.dump(existing_data, conversation_file, ensure_ascii=False, indent=4)
 
-    def save_summary_conversation(self):
+    def end_conversation(self):
         ai_name = self.ai_name
         directory_path = f"./log/{ai_name}"
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -110,6 +115,7 @@ class LangChainModule:
         summary_filename = f"{directory_path}/{ai_name}_{timestamp}_summary.txt"
         with open(summary_filename, "w", encoding='utf-8') as summary_file:
             summary_file.write(summary_msg)
+        return "要約完了"
 
     # ファイル名から日付を解析する関数
     def parse_date_from_filename(self, file_path):
