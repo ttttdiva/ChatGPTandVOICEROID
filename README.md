@@ -38,15 +38,16 @@ CeVIOやCOEIROINK、ガイノイドTalk等AssistantSeikaが対応してるソフ
 その場合は`run.bat`でソフト自動起動までは行われないためあらかじめ立ち上げておく必要がある  
 
 ### GoogleSearch
+必要に応じてGoogle検索を利用して検索結果を踏まえた回答をする(OpenAI API限定)  
 会話中に「検索して」を含む文章を入れるとGoogle検索を利用して検索結果を踏まえた回答をする  
 ただし事前にGoogle Cloud PlatformからCustom Search APIのAPI Keyを作成する必要がある  
 
 1. Goole Custom Search APIのAPI Keyを作成する
 [Custom Search APIを使ってGoogle検索結果を取得する - Qiita](https://qiita.com/zak_y/items/42ca0f1ea14f7046108c)
-2. `.env`の`google_api_key`と`cx`を入力する
-3. 自環境に合うJDKをインストール
+1. `.env`の`google_api_key`と`cx`を入力する
+2. 自環境に合うJDKをインストール
 [Java JDKのインストール方法（Windows &#038; Mac対応）｜Code for Fun](https://codeforfun.jp/how-to-install-java-jdk-on-windows-and-mac/)
-4. `config.yaml`の`java_home`のパスをインストールしたJDKのバージョンに合わせ変更
+1. `config.yaml`の`java_home`のパスをインストールしたJDKのバージョンに合わせ変更
 
 ### キャラクター追加
 `./character/{キャラクター名}.yaml`を追加・修正することで可能
