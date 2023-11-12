@@ -5,7 +5,6 @@ import os
 from time import sleep
 
 import openai
-import yaml
 from dotenv import find_dotenv, load_dotenv
 
 from character_manager import CharacterManager

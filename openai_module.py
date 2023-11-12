@@ -1,3 +1,4 @@
+import asyncio
 import json
 import os
 import time
@@ -82,10 +83,13 @@ class OpenAIModule:
 
         # 実行が完了するまで待機
         while True:
-            run = self.client.beta.threads.runs.retrieve(
-                thread_id=self.thread.id,
-                run_id=run.id
-            )
+            try:
+                run = self.client.beta.threads.runs.retrieve(
+                    thread_id=self.thread.id,
+                    run_id=run.id
+                )
+            except:
+                pass
             if run.status == "completed":
                 break
             elif run.status == "queue":
@@ -116,7 +120,7 @@ class OpenAIModule:
                         run_id=run.id,
                         tool_outputs=outputs_to_submit
                     )
-            time.sleep(0.1)
+            asyncio.sleep(0.1)
 
         # 完了したメッセージを取得
         messages = self.client.beta.threads.messages.list(
