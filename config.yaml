@@ -1,5 +1,6 @@
 llm_model: "gpt-4-1106-preview"
 record_model: "whisper"
+default_character: "ずんだもん"
 device_index: 1
 Text_Only: False
 tts_settings:

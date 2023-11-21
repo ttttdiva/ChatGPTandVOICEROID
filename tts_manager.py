@@ -1,16 +1,25 @@
 import os
 import re
 import subprocess
+import wave
 from time import sleep
 
 import psutil
+import pyaudio
 import yaml
 
-from voicevox_util import talk_voicevox
+from voicevox_util import talk_voicevox_file, talk_voicevox_stream
 
 
 class TTSManager:
-    def __init__(self):
+    def __init__(self, caller, tts_type):
+        self.caller = caller
+        if self.caller == "local":
+            self.p = pyaudio.PyAudio()
+        elif self.caller == "discord":
+            import discord
+            self.discord = discord
+
         # 設定ファイルを読み込み
         with open("config.yaml", 'r') as f:
             config = yaml.safe_load(f)
@@ -24,7 +33,7 @@ class TTSManager:
         self.VOICEROID = os.path.expandvars(config['tts_settings']['VOICEROID'])
         self.VOICEVOX = os.path.expandvars(config['tts_settings']['VOICEVOX'])
 
-        self.tts_type = "VOICEVOX"
+        self.tts_type = tts_type
 
         self.wakeup_app()
 
@@ -58,15 +67,27 @@ class TTSManager:
                 subprocess.run(f"{self.SeikaCtl} prodscan")
 
     # メッセージを喋らせる
-    def talk_message(self, msg:str, cid:int):
-        print(f"「{msg}」")
+    def talk_message(self, msg:str, cid:int, voice_client:bytes=None):
+        print(f"{msg}")
         if self.text_only is True:
             return
         
-        if self.tts_type == "VOICEROID":
-            subprocess.run(f"{self.SeikaSay2} -cid {cid} -t \"{msg}\"")
-        elif self.tts_type == "VOICEVOX":
-            talk_voicevox(msg, cid, speed=1.0, pitch=0.03, intonation=2.0)
+        audio_file = "./temp/voice.wav"
+
+        if self.caller == "local":
+            if self.tts_type == "VOICEROID":
+                subprocess.run(f"{self.SeikaSay2} -cid {cid} -t \"{msg}\"")
+            elif self.tts_type == "VOICEVOX":
+                talk_voicevox_stream(msg, cid, speed=1.0, pitch=0.03, intonation=2.0)
+        elif self.caller == "discord":
+            if self.tts_type == "VOICEROID":
+                subprocess.run(f"{self.SeikaSay2} -cid {cid} -save {audio_file} -t \"{msg}\"")
+            elif self.tts_type == "VOICEVOX":
+                talk_voicevox_file(msg, cid, audio_file, speed=1.0, pitch=0.03, intonation=2.0)
+
+            if voice_client and voice_client.is_connected():
+                audio_source = self.discord.FFmpegPCMAudio(audio_file)
+                voice_client.play(audio_source)
 
     # 会話を終了する
     def end_talk(self, voice_msg):
@@ -78,7 +99,7 @@ class TTSManager:
 
     # 無言時に発生する幻聴をスルー
     def hallucination(self, voice_msg):
-        pattern = "^(ご視聴ありがとうございました.?|ありがとうございました.?|バイバイ|)$"
+        pattern = "^(ご視聴ありがとうございました.?|ありがとうございました.?|バイバイ| |)$"
         if re.search(pattern, voice_msg):
             return True
         else:

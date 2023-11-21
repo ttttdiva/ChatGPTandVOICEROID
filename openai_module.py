@@ -83,13 +83,10 @@ class OpenAIModule:
 
         # 実行が完了するまで待機
         while True:
-            try:
-                run = self.client.beta.threads.runs.retrieve(
-                    thread_id=self.thread.id,
-                    run_id=run.id
-                )
-            except:
-                pass
+            run = self.client.beta.threads.runs.retrieve(
+                thread_id=self.thread.id,
+                run_id=run.id
+            )
             if run.status == "completed":
                 break
             elif run.status == "queue":

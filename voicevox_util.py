@@ -1,7 +1,9 @@
 import json
 import re
 import time
+import wave
 
+import numpy as np
 import pyaudio
 import requests
 
@@ -45,7 +47,26 @@ def synthesis(speaker, query_data, max_retry):
     else:
         raise ConnectionError("音声エラー：リトライ回数が上限に到達しました。 synthesis : ", r)
 
-def talk_voicevox(texts, speaker=4, speed=1.0, pitch=0, intonation=1.0, max_retry=20):
+def talk_voicevox_file(texts, audio_file, speaker=7, speed=1.0, pitch=0, intonation=1.0, max_retry=20):
+    # 音声ファイルを読み上げる
+    if not texts:
+        texts = "ちょっと、通信状態悪いかも？"
+    texts = re.split("(?<=！|。|？)", texts)
+    for text in texts:
+        if text:  # 空のテキストをスキップ
+            # audio_query
+            query_data = audio_query(text, speaker, max_retry)
+            # 話速、音高、抑揚を設定
+            query_data = adjust_voice_parameters(query_data, speed, pitch, intonation)
+            # synthesis
+            voice_data = synthesis(speaker, query_data, max_retry)
+            with wave.open(audio_file, 'wb') as wf:
+                wf.setnchannels(1)  # モノラル
+                wf.setsampwidth(2)  # サンプルサイズは16ビット (2バイト)
+                wf.setframerate(24000)  # サンプリングレートは24000Hz
+                wf.writeframes(voice_data)  # 無音データと音声データを結合して書き込む
+
+def talk_voicevox_stream(texts, speaker=7, speed=1.0, pitch=0, intonation=1.0, max_retry=20):
     # 音声ファイルを読み上げる
     if not texts:
         texts = "ちょっと、通信状態悪いかも？"

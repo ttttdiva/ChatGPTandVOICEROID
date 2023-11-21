@@ -2,8 +2,12 @@ import io
 import os
 import queue
 import tempfile
+import time
+import wave
 
+import discord
 import numpy as np
+import pyaudio
 import speech_recognition as sr
 import torch
 import whisper
@@ -74,7 +78,6 @@ class VoiceRecognizer:
         }
         method = method_map[self.model_type]
         return method()
-
 
     def recognize_whisper(self):
         english = self.english
@@ -202,3 +205,65 @@ class VoiceRecognizer:
 
     #         if save_file:
     #             os.remove(audio_data)
+
+class StreamingSink(discord.sinks.Sink):
+    def __init__(self, voice_client, ctx, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.voice_client = voice_client
+        self.ctx = ctx
+        self.buffer = bytearray()
+        self.sample_width = pyaudio.get_sample_size(pyaudio.paInt16)
+        self.silence_threshold = 1000  # 無音の閾値（サンプル値として）
+        # self.max_silence_length = 0.8 * 44100 * 2  # 0.8秒のサンプル数
+        self.is_voice_active = True  # 音声検出フラグ
+        self.last_voice_received = time.time()  # 最後に音声データを受信した時刻
+        self.char_select = False  # キャラ選択フラグ
+
+    def write(self, data, user):
+        # print("VoIP receive")
+        try:
+            self.buffer.extend(data)
+            self.last_voice_received = time.time()  # 音声データを受信するたびに時刻を更新
+            self.user = user
+        except:
+            pass
+
+    def save_to_file(self, audio_file):
+        # バイトデータをサンプルに変換
+        samples = [self.buffer[i:i+2] for i in range(0, len(self.buffer), 2)]
+        # 無音部分を検出
+        voice_data = bytearray()
+        silence_detected = True
+        for sample in samples:
+            if abs(int.from_bytes(sample, 'little', signed=True)) > self.silence_threshold:
+                silence_detected = False
+            if not silence_detected:
+                voice_data.extend(sample)
+
+        # voice_dataが空ならファイルを保存しない
+        if len(voice_data) == 0:
+            print("No audio detected")
+            self.voice_data = False
+            self.buffer.clear()
+        else:
+            # ファイルに保存
+            with wave.open(audio_file, "wb") as wf:
+                wf.setnchannels(2)
+                wf.setsampwidth(self.sample_width)
+                wf.setframerate(44100)
+                wf.writeframes(voice_data)
+            
+            self.voice_data = audio_file
+            print("Audio Detected.")
+
+    def transcribe_audio(self):
+        model = whisper.load_model("large-v3", device="cuda")
+        result = model.transcribe(self.voice_data, language="ja")
+        predicted_text = result["text"]
+        print("You said: " + predicted_text)
+        return predicted_text
+
+    def cleanup(self):
+        self.buffer.clear()  # 残っているバッファをクリア
+
+
