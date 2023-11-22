@@ -29,16 +29,69 @@ except KeyError as e:
 
 character_manager = CharacterManager()
 llm_manager = LLMManager(character_manager.ai_chara, character_manager.ai_dialogues, google_api_key, cx, character_manager.ai_name)
-tts_manager = TTSManager("discord", character_manager.tts_type)
+tts_manager = TTSManager("discord", character_manager.tts_type, character_manager.voice_cid)
 
 intents = discord.Intents().all()
 bot = discord.Bot(intents=intents)
 
 
 
+async def main(voice_msg, voice_client, user_id, ctx):
+    global llm_manager
+    global voice_cid
+    if character_manager.char_select == False:
+        # キャラクター選択処理
+        if tts_manager.end_talk(voice_msg):
+            tts_manager.talk_message("さようなら！", voice_client)
+            voice_client.disconnect()
 
+        # キャラを指定
+        if any(name in voice_msg for name in character_manager.all_char_names):
+            ai_name, ai_chara, ai_dialogues, voice_cid, greet, tts_type = character_manager.get_character(voice_msg)
+            tts_manager.tts_type = tts_type
+            tts_manager.voice_cid = voice_cid
+            
+            # キャラプロンプトを読み込み
+            llm_manager = LLMManager(ai_chara, ai_dialogues, google_api_key, cx, ai_name)
+            
+            tts_manager.talk_message(greet, voice_client)
+            await ctx.send(f"<@{user_id}> {greet}")
+            character_manager.char_select = True
+        else:
+            print("名前以外が呼ばれた")
+    else:
+        # 会話メイン処理
+        if tts_manager.end_talk(voice_msg):
+            tts_manager.talk_message("End", voice_client)
+            print('talk終了')
+            # 会話ログと要約を保存
+            end = llm_manager.end_conversation()
+            if end:
+                tts_manager.talk_message(end, voice_client) # なんで書いたか忘れた処理
+            character_manager.char_select = False
 
+            # if voice_msg in ["PCをシャットダウン", "おやすみ"]:
+            #     tts_manager.talk_message("おやすみなさい！",voice_client)
+            #     os.system('shutdown /s /f /t 0')
+            return
+        elif voice_msg == "前回の続き":
+            tts_manager.talk_message("ちょっと待ってね！", voice_client)
+            
+            # ログファイルから前回の会話を読み込んでmessagesに追加
+            llm_manager.load_previous_chat()
+            voice_msg = "今までどんなことを話していたっけ？30文字程度で教えて。"
+        elif "検索して" in voice_msg:
+            pass
+        elif tts_manager.hallucination(voice_msg):
+            return
 
+        # GPTに対して返答を求める
+        user_name = await bot.fetch_user(user_id)
+
+        user_input = f"私の名前は\"{user_name}\"です。\n{voice_msg}"
+        return_msg = llm_manager.get_response(user_input)
+        await ctx.send(f"<@{user_id}> {return_msg}")
+        tts_manager.talk_message(return_msg, voice_client)
 
 
 
@@ -58,7 +111,7 @@ async def start_record(ctx: discord.ApplicationContext):
     print("なにか話してください ...")
 
     # StreamingSinkのインスタンスを作成
-    sink = StreamingSink(vc, ctx)
+    sink = StreamingSink(vc)
 
     # 録音を開始
     vc.start_recording(sink, finished_callback, ctx)
@@ -66,28 +119,23 @@ async def start_record(ctx: discord.ApplicationContext):
     await asyncio.sleep(1)
 
     # 定期的に音声をチェック
-    check_voice_loop.start(sink)
+    check_voice_loop.start(sink, ctx)
 
 @tasks.loop(seconds=0.8)
-async def check_voice_loop(sink):
-    # print("Checking voice...")
+async def check_voice_loop(sink, ctx):
     current_time = time.time()
     if current_time - sink.last_voice_received >= 0.8:  # 0.8秒以上音声データが受信されていない場合
-        # print("No sound detected for 1 second.")
         if sink.is_voice_active:
-            # print("Voice End!")
             audio_file = "./temp/record.wav"
             sink.save_to_file(audio_file)
             if sink.is_voice_active:
                 voice_msg = sink.transcribe_audio(audio_file)
-                await main(sink, voice_msg)
+                await main(voice_msg, sink.voice_client, sink.user, ctx)
                 sink.buffer.clear()
                 sink.is_voice_active = False
                 print("なにか話してください ...")
             else:
                 print("なにか話してください ...")
-        # else:
-            # print("No Sound")
     else:
         sink.is_voice_active = True
 
@@ -103,77 +151,6 @@ async def stop_recording(ctx: discord.ApplicationContext):
 # 録音終了時に呼び出される関数
 async def finished_callback(sink:discord.sinks.MP3Sink, ctx:discord.ApplicationContext):
     pass
-
-
-
-
-
-
-async def main(sink, voice_msg):
-    if sink.char_select == False:
-        if tts_manager.end_talk(voice_msg):
-            tts_manager.talk_message("さようなら！", character_manager.voice_cid, sink.voice_client)
-            sink.voice_client.disconnect()
-
-        # キャラを指定
-        if any(name in voice_msg for name in character_manager.all_char_names):
-            # キャラの情報を取得
-            sink.ai_name, sink.ai_chara, sink.ai_dialogues, sink.voice_cid, greet, tts_type = character_manager.get_character(voice_msg)
-            tts_manager.tts_type = tts_type
-            
-            # キャラプロンプトを読み込み
-            sink.llm_manager = LLMManager(sink.ai_chara, sink.ai_dialogues, google_api_key, cx, sink.ai_name)
-            
-            tts_manager.talk_message(greet, sink.voice_cid, sink.voice_client)
-            await sink.ctx.send(f"<@{sink.user}> {greet}")
-            sink.char_select = True
-        else:
-            print("名前以外が呼ばれた")
-    else:
-        # 特殊処理
-        if tts_manager.end_talk(voice_msg):
-            tts_manager.talk_message("End", sink.voice_cid, sink.voice_client)
-            print('talk終了')
-            # 会話ログと要約を保存
-            end = sink.llm_manager.end_conversation()
-            if end:
-                tts_manager.talk_message(end, sink.voice_cid, sink.voice_client) # なんで書いたか忘れた処理
-            sink.char_select = False
-
-            if voice_msg in ["PCをシャットダウン", "おやすみ"]:
-                tts_manager.talk_message("おやすみなさい！",sink.voice_cid, sink.voice_client)
-                os.system('shutdown /s /f /t 0')
-            return
-        elif voice_msg == "前回の続き":
-            tts_manager.talk_message("ちょっと待ってね！", sink.voice_cid. sink.voice_client)
-            
-            # ログファイルから前回の会話を読み込んでmessagesに追加
-            sink.llm_manager.load_previous_chat()
-            voice_msg = "今までどんなことを話していたっけ？30文字程度で教えて。"
-        elif "検索して" in voice_msg:
-            pass
-        elif tts_manager.hallucination(voice_msg):
-            return
-
-        # GPTに対して返答を求める
-        user_input = f"私の名前は\"{sink.user}\"です。\n{voice_msg}"
-        return_msg = sink.llm_manager.get_response(user_input)
-        tts_manager.talk_message(return_msg, sink.voice_cid, sink.voice_client)
-        await sink.ctx.send(f"<@{sink.user}> {return_msg}")
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 @bot.command(description="Botがボイスチャンネルに接続します。")
 async def join(ctx):
@@ -212,7 +189,18 @@ async def on_ready():
         if channel:
             voice_client = await channel.connect()
             # 読み上げ
-            tts_manager.talk_message("起動しました！", character_manager.voice_cid, voice_client)
+            tts_manager.talk_message("起動しました！", voice_client)
+            # StreamingSinkのインスタンスを作成
+            sink = StreamingSink(voice_client)
+            ctx = bot.get_channel(int(text_channel))
+
+            # 録音を開始
+            voice_client.start_recording(sink, finished_callback, ctx)
+
+            await asyncio.sleep(1)
+
+            # 定期的に音声をチェック
+            check_voice_loop.start(sink, ctx)
         else:
             print("指定されたチャンネルが見つかりません。")
     else:
@@ -222,7 +210,7 @@ async def on_ready():
 @bot.event
 async def on_member_join(member):
     # メッセージを送信するテキストチャンネルを指定
-    channel = bot.get_channel(text_channel)
+    channel = bot.get_channel(int(text_channel))
     if channel:  # チャンネルが見つかった場合
         await channel.send(f'ようこそ{member.mention}さん！')
 
@@ -235,6 +223,18 @@ async def on_voice_state_update(member, before, after):
         # ボットが既にボイスチャンネルに接続していないことを確認
         if voice_client is None or voice_client.channel != channel:
             await channel.connect()
+            # StreamingSinkのインスタンスを作成
+            sink = StreamingSink(voice_client)
+            ctx = bot.get_channel(int(text_channel))
+
+            # 録音を開始
+            voice_client.start_recording(sink, finished_callback, ctx)
+
+            await asyncio.sleep(1)
+
+            # 定期的に音声をチェック
+            check_voice_loop.start(sink, ctx)
+
 
 # on_messageイベントのリスナー
 @bot.event
@@ -248,24 +248,18 @@ async def on_message(message):
 
     elif bot.user.mentioned_in(message):
         user_name = message.author.display_name
+        user_id = message.author.id
 
         # 通話お知らせくんからのメッセージは無視
         if user_name == "通話お知らせくん":
             return
 
         clean_content = re.sub(r'<@!?(\d+)> ', '', message.content)
-        user_input = f"私の名前は\"{user_name}\"です。\n{clean_content}"
-        
-        print(user_input)
-        return_msg = llm_manager.get_response(user_input)
-        print(return_msg)
-        await message.channel.send(f'{message.author.mention} {return_msg}')
+        print(f"You said: {clean_content}")
 
-        # 読み上げ
         voice_client = discord.utils.get(bot.voice_clients)
-        tts_manager.talk_message(return_msg, character_manager.voice_cid, voice_client)
 
-
+        await main(clean_content, voice_client, user_id, message.channel)
 
 
 bot.run(token)

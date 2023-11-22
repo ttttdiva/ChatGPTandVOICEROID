@@ -208,10 +208,9 @@ class VoiceRecognizer:
     #             os.remove(audio_data)
 
 class StreamingSink(discord.sinks.Sink):
-    def __init__(self, voice_client, ctx, *args, **kwargs):
+    def __init__(self, voice_client, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.voice_client = voice_client
-        self.ctx = ctx
         self.buffer = bytearray()
         self.sample_width = pyaudio.get_sample_size(pyaudio.paInt16)
         self.silence_threshold = 1000  # 無音の閾値（サンプル値として）

@@ -12,7 +12,7 @@ from voicevox_util import talk_voicevox_file, talk_voicevox_stream
 
 
 class TTSManager:
-    def __init__(self, caller, tts_type):
+    def __init__(self, caller, tts_type, voice_cid):
         self.caller = caller
         if self.caller == "local":
             self.p = pyaudio.PyAudio()
@@ -34,6 +34,7 @@ class TTSManager:
         self.VOICEVOX = os.path.expandvars(config['tts_settings']['VOICEVOX'])
 
         self.tts_type = tts_type
+        self.voice_cid = voice_cid
 
         self.wakeup_app()
 
@@ -67,7 +68,7 @@ class TTSManager:
                 subprocess.run(f"{self.SeikaCtl} prodscan")
 
     # メッセージを喋らせる
-    def talk_message(self, msg:str, cid:int, voice_client:bytes=None):
+    def talk_message(self, msg:str, voice_client:bytes=None, cid:int=None):
         print(f"{msg}")
         if self.text_only is True:
             return
@@ -76,14 +77,14 @@ class TTSManager:
 
         if self.caller == "local":
             if self.tts_type == "VOICEROID":
-                subprocess.run(f"{self.SeikaSay2} -cid {cid} -t \"{msg}\"")
+                subprocess.run(f"{self.SeikaSay2} -cid {self.voice_cid} -t \"{msg}\"")
             elif self.tts_type == "VOICEVOX":
-                talk_voicevox_stream(msg, cid, speed=1.0, pitch=0.03, intonation=2.0)
+                talk_voicevox_stream(msg, self.voice_cid, speed=1.0, pitch=0.03, intonation=2.0)
         elif self.caller == "discord":
             if self.tts_type == "VOICEROID":
-                subprocess.run(f"{self.SeikaSay2} -cid {cid} -save {audio_file} -t \"{msg}\"")
+                subprocess.run(f"{self.SeikaSay2} -cid {self.voice_cid} -save {audio_file} -t \"{msg}\"")
             elif self.tts_type == "VOICEVOX":
-                talk_voicevox_file(msg, audio_file, cid, speed=1.0, pitch=0.03, intonation=2.0)
+                talk_voicevox_file(msg, audio_file, self.voice_cid, speed=1.0, pitch=0.03, intonation=2.0)
 
             if voice_client and voice_client.is_connected():
                 audio_source = self.discord.FFmpegPCMAudio(audio_file)
