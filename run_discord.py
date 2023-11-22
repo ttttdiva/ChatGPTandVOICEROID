@@ -78,8 +78,8 @@ async def check_voice_loop(sink):
             # print("Voice End!")
             audio_file = "./temp/record.wav"
             sink.save_to_file(audio_file)
-            if sink.voice_data:
-                voice_msg = sink.transcribe_audio()
+            if sink.is_voice_active:
+                voice_msg = sink.transcribe_audio(audio_file)
                 await main(sink, voice_msg)
                 sink.buffer.clear()
                 sink.is_voice_active = False
@@ -125,6 +125,7 @@ async def main(sink, voice_msg):
             sink.llm_manager = LLMManager(sink.ai_chara, sink.ai_dialogues, google_api_key, cx, sink.ai_name)
             
             tts_manager.talk_message(greet, sink.voice_cid, sink.voice_client)
+            await sink.ctx.send(f"<@{sink.user}> {greet}")
             sink.char_select = True
         else:
             print("名前以外が呼ばれた")
@@ -150,15 +151,13 @@ async def main(sink, voice_msg):
             sink.llm_manager.load_previous_chat()
             voice_msg = "今までどんなことを話していたっけ？30文字程度で教えて。"
         elif "検索して" in voice_msg:
-            return_msg = sink.llm_manager.get_response(voice_msg)
-            tts_manager.talk_message(return_msg, sink.voice_cid, sink.voice_client)
-            await sink.ctx.send(f"<@{sink.user}> {return_msg}")
-            return
+            pass
         elif tts_manager.hallucination(voice_msg):
             return
 
         # GPTに対して返答を求める
-        return_msg = sink.llm_manager.get_response(voice_msg)
+        user_input = f"私の名前は\"{sink.user}\"です。\n{voice_msg}"
+        return_msg = sink.llm_manager.get_response(user_input)
         tts_manager.talk_message(return_msg, sink.voice_cid, sink.voice_client)
         await sink.ctx.send(f"<@{sink.user}> {return_msg}")
 
@@ -248,12 +247,15 @@ async def on_message(message):
         await message.channel.send('pong')
 
     elif bot.user.mentioned_in(message):
-        # 通話お知らせくんからのメッセージは無視
-        if message.author.display_name == "通話お知らせくん":
-            return
         user_name = message.author.display_name
+
+        # 通話お知らせくんからのメッセージは無視
+        if user_name == "通話お知らせくん":
+            return
+
         clean_content = re.sub(r'<@!?(\d+)> ', '', message.content)
         user_input = f"私の名前は\"{user_name}\"です。\n{clean_content}"
+        
         print(user_input)
         return_msg = llm_manager.get_response(user_input)
         print(return_msg)

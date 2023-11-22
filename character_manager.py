@@ -9,6 +9,7 @@ class CharacterManager:
         self.character_dir = "./character"
         self.load_character_configs()
         self.all_char_names = self.get_all_char_names()
+        self.char_select = False  # キャラ選択フラグ
 
         # デフォルトキャラ読み込み
         with open("config.yaml", 'r', encoding='utf-8') as f:

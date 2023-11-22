@@ -83,7 +83,7 @@ class TTSManager:
             if self.tts_type == "VOICEROID":
                 subprocess.run(f"{self.SeikaSay2} -cid {cid} -save {audio_file} -t \"{msg}\"")
             elif self.tts_type == "VOICEVOX":
-                talk_voicevox_file(msg, cid, audio_file, speed=1.0, pitch=0.03, intonation=2.0)
+                talk_voicevox_file(msg, audio_file, cid, speed=1.0, pitch=0.03, intonation=2.0)
 
             if voice_client and voice_client.is_connected():
                 audio_source = self.discord.FFmpegPCMAudio(audio_file)

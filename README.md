@@ -1,18 +1,38 @@
 # ChatGPTandVOICEROID
 ChatGPT(API)との会話をマイクで行いVOICEROIDやVOICEVOXで読み上げさせるだけのスクリプト  
-run.batを起動した後、キャラクター名を呼びかけることで対象キャラのプロンプトを使いチャットを開始する  
+run_local.batを起動した後、キャラクター名を呼びかけることで対象キャラのプロンプトを使いチャットを開始する  
+Discord Botとして稼働させてメンションテキスト or ボイスチャットでも会話可能(ローカルよりも音声認識の遅延がかなり増える為注意)  
   
 ※初期設定ではマイク入力、音声読み上げで会話するようになっている為、テキストのみで使う場合は`config.yaml`の`Text_Only: False`をTrueに変更する  
 
 ## Install
+### Local
 1. `.env`ファイルにOpenAIのAPI Keyを入力する
 2. `setup.bat`を実行
 3. [VOICEVOX](https://voicevox.hiroshiba.jp/)をDL、インストールする(少なくともずんだもんで音声再生可能な環境にする)
 
+### Discord Bot
+1. `.env`ファイルにOpenAIのAPI Key及びBotのToken及び使用するサーバーIDを入力する
+2. `setup.bat`を実行
+3. [VOICEVOX](https://voicevox.hiroshiba.jp/)をDL、インストールする(少なくともずんだもんで音声再生可能な環境にする)
+
 ## Usage
-1. `run.bat`を実行
-2. 「起動しました！」のメッセージが出た後にキャラクター名を入力(例：ずんだもん、葵、茜、きりたん、etc...)
-3. 対象のキャラクターとのチャット会話が開始する
+### Local
+1. `run_local.bat`を実行
+2. 「起動しました！」のメッセージが出た後にテキストか音声でキャラクター名を入力(例：ずんだもん、葵、茜、きりたん、etc...)
+3. 対象のキャラクターとの会話が開始する
+  
+「前回の続き」と入力することで前回のsummary.txtを読み込む  
+「検索して」を含む文章を入力することでGoogle検索結果を踏まえて回答する(要Option設定)  
+「エンド」と入力することでキャラクターとの会話を終了する  
+再度「エンド」と入力することでbatを終了する  
+  
+注意：「おやすみ」「PCをシャットダウン」と入力すると会話を要約してからshutdownコマンドを実行する為注意(完全一致でのみ実行)  
+
+### Discord Bot
+1. `run_discord.bat`を実行
+2. 「起動しました！」のメッセージが出た後にメンションかVCでキャラクター名を入力(例：ずんだもん、葵、茜、きりたん、etc...)
+3. 対象のキャラクターとの会話が開始する
   
 「前回の続き」と入力することで前回のsummary.txtを読み込む  
 「検索して」を含む文章を入力することでGoogle検索結果を踏まえて回答する(要Option設定)  
@@ -22,20 +42,24 @@ run.batを起動した後、キャラクター名を呼びかけることで対�
 注意：「おやすみ」「PCをシャットダウン」と入力すると会話を要約してからshutdownコマンドを実行する為注意(完全一致でのみ実行)  
 
 ## Option
+### Discord Bot Setup
+1. [通常通りDiscord Botを作成](https://note.com/gx1285/n/na23072135a16)し、Botをサーバーに参加させる
+2. Bot Token、Discord_Text_Channel_ID、Discord_Voice_Channel_ID、Discord_Server_IDを`.env`に記載
+
 ### VOICEROID Setup
-Installの手順ではまだVOICEROIDの読み上げが実行できない  
+Installの手順だけではまだVOICEROID等他読み上げソフトは実行できない  
 1. [Assistant Seika](https://wiki.hgotoh.jp/documents/tools/assistantseika/assistantseika-001a)をDL、インストールする
 2. `AssistantSeika.exe`と`VoiceroidEditor.exe`を起動する
 3. VOICEROID2にチェックを入れる
 ![](attachments/2023-11-06-22-10-06.png)
-4. 製品スキャンを実行
-5. 話者一覧タブに移動し読み上げに使うボイスプリセットのcidを確認(画像は2158)
+1. 製品スキャンを実行
+2. 話者一覧タブに移動し読み上げに使うボイスプリセットのcidを確認(画像は2158)
 ![](attachments/2023-11-06-22-16-01.png)
-6. `./character/{キャラクター名}.yaml`の`voice_cid`を手順5で確認した値に変更する
-7. `config.yaml`の`Assistant_Seika_flag`をTrueに変更する
+1. `./character/{キャラクター名}.yaml`の`voice_cid`を手順5で確認した値に変更する
+2. `config.yaml`の`Assistant_Seika_flag`をTrueに変更する
   
 CeVIOやCOEIROINK、ガイノイドTalk等AssistantSeikaが対応してるソフトであれば上記手順で設定可能  
-その場合は`run.bat`でソフト自動起動までは行われないためあらかじめ立ち上げておく必要がある  
+その場合は`run_local.bat`でソフト自動起動までは行われないためあらかじめ立ち上げておく必要がある  
 
 ### GoogleSearch
 必要に応じてGoogle検索を利用して検索結果を踏まえた回答をする(OpenAI API限定)  

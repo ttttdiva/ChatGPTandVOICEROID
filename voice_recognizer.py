@@ -13,6 +13,7 @@ import torch
 import whisper
 import yaml
 from pydub import AudioSegment
+from scipy.signal import resample
 
 from audio_transcriber import AudioTranscriber
 from audio_utils import display_valid_input_devices, get_valid_input_devices
@@ -217,7 +218,6 @@ class StreamingSink(discord.sinks.Sink):
         # self.max_silence_length = 0.8 * 44100 * 2  # 0.8秒のサンプル数
         self.is_voice_active = True  # 音声検出フラグ
         self.last_voice_received = time.time()  # 最後に音声データを受信した時刻
-        self.char_select = False  # キャラ選択フラグ
 
     def write(self, data, user):
         # print("VoIP receive")
@@ -228,10 +228,10 @@ class StreamingSink(discord.sinks.Sink):
         except:
             pass
 
-    def save_to_file(self, audio_file):
-        # バイトデータをサンプルに変換
-        samples = [self.buffer[i:i+2] for i in range(0, len(self.buffer), 2)]
-        # 無音部分を検出
+    def _bytes_to_samples(self):
+        return [self.buffer[i:i+2] for i in range(0, len(self.buffer), 2)]
+        
+    def _detect_silence(self, samples):
         voice_data = bytearray()
         silence_detected = True
         for sample in samples:
@@ -239,26 +239,39 @@ class StreamingSink(discord.sinks.Sink):
                 silence_detected = False
             if not silence_detected:
                 voice_data.extend(sample)
+        return voice_data
 
-        # voice_dataが空ならファイルを保存しない
+    def _resample_voice_data(self, voice_data):
+        voice_samples = np.frombuffer(voice_data, dtype=np.int16)
+
+        new_length = int(len(voice_samples) / 1.1)
+        resampled_samples = resample(voice_samples, new_length)
+
+        return resampled_samples.astype(np.int16).tobytes()
+
+    def _save_to_file(self, audio_file, voice_data):
+        with wave.open(audio_file, "wb") as wf:
+            wf.setnchannels(2)
+            wf.setsampwidth(self.sample_width)
+            wf.setframerate(44100)
+            wf.writeframes(voice_data)
+
+    def save_to_file(self, audio_file):
+        samples = self._bytes_to_samples()
+        voice_data = self._detect_silence(samples)
+
         if len(voice_data) == 0:
             print("No audio detected")
-            self.voice_data = False
+            self.is_voice_active = False
             self.buffer.clear()
         else:
-            # ファイルに保存
-            with wave.open(audio_file, "wb") as wf:
-                wf.setnchannels(2)
-                wf.setsampwidth(self.sample_width)
-                wf.setframerate(44100)
-                wf.writeframes(voice_data)
-            
-            self.voice_data = audio_file
+            voice_data = self._resample_voice_data(voice_data)
+            self._save_to_file(audio_file, voice_data)
             print("Audio Detected.")
 
-    def transcribe_audio(self):
+    def transcribe_audio(self, audio_file):
         model = whisper.load_model("large-v3", device="cuda")
-        result = model.transcribe(self.voice_data, language="ja")
+        result = model.transcribe(audio_file, language="ja")
         predicted_text = result["text"]
         print("You said: " + predicted_text)
         return predicted_text

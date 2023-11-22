@@ -75,9 +75,7 @@ def main():
                     llm_manager.load_previous_chat()
                     voice_msg = "今までどんなことを話していたっけ？30文字程度で教えて。"
                 elif "検索して" in voice_msg:
-                    return_msg = llm_manager.get_response(voice_msg)
-                    tts_manager.talk_message(return_msg, voice_cid)
-                    continue
+                    pass
                 elif tts_manager.hallucination(voice_msg):
                     continue
 
