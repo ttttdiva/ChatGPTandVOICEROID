@@ -247,9 +247,9 @@ class OpenAIModule:
             screenshot = ImageGrab.grab(bbox)
 
             # スクリーンショットのサイズを長辺512pxにスケールダウン（アスペクト比維持）
-            # detailed: highの場合は1999まで
+            # detailed: highの場合は2048まで
             longest_side = max(screenshot.size)
-            scale_factor = 1999 / longest_side
+            scale_factor = 2048 / longest_side
             new_size = (int(screenshot.width * scale_factor), int(screenshot.height * scale_factor))
             screenshot = screenshot.resize(new_size, Image.ANTIALIAS)
 
@@ -279,7 +279,7 @@ class OpenAIModule:
             ],
             }
         ],
-        max_tokens=300,
+        max_tokens=2000,
         )
 
         result = response.choices[0].message.content
