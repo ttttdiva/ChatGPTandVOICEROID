@@ -1,11 +1,15 @@
 import asyncio
+import base64
 import json
 import os
 import time
 from datetime import datetime
+from io import BytesIO
 
+import pygetwindow as gw
 import yaml
 from openai import OpenAI
+from PIL import Image, ImageGrab
 
 
 class OpenAIModule:
@@ -31,7 +35,7 @@ class OpenAIModule:
                 self.assistant_id = assistant.id
                 break
         
-        # エラーハンドリング: 指定した名前のアシスタントが見つからなかった場合
+        # 指定した名前のアシスタントが見つからなかった場合
         if not self.assistant_id:
             print("既存Assistantsが存在しませんでした。新規作成します。")
             assistant = self.client.beta.assistants.create(
@@ -54,7 +58,23 @@ class OpenAIModule:
                             },
                             "required": ["search_word"]
                         }
-                    }
+                    },
+                },
+                    {"type": "function",
+                    "function": {
+                        "name": "analyze_image",
+                        "description": "Obtain information about the image.",
+                        "parameters": {
+                            "type": "object",
+                            "properties": {
+                                "analyze_image": {
+                                    "type": "string",
+                                    "description": "No argument."
+                                }
+                            },
+                            "required": ["None"]
+                        }
+                    },
                 },
                 ],
                 model=model,
@@ -79,6 +99,7 @@ class OpenAIModule:
         run = self.client.beta.threads.runs.create(
             thread_id=self.thread.id,
             assistant_id=self.assistant_id,
+            model=model,
         )
 
         # 実行が完了するまで待機
@@ -109,7 +130,14 @@ class OpenAIModule:
                             "tool_call_id": tool_call.id,
                             "output": result,
                         })
-                
+                    elif function_name == "analyze_image":
+                        result = self.analyze_image(user_input)
+                        # 結果をリストに追加
+                        outputs_to_submit.append({
+                            "tool_call_id": tool_call.id,
+                            "output": result,
+                        })
+
                 # 全ての結果を一度に送る
                 if outputs_to_submit:
                     run = self.client.beta.threads.runs.submit_tool_outputs(
@@ -205,3 +233,54 @@ class OpenAIModule:
 
     def add_prompt(self, role, prompt):
         return self.instance.add_prompt(role, prompt)
+
+    def capture_screen_to_base64(self):
+        # アクティブなウィンドウの取得
+        window = gw.getActiveWindow()
+
+        # アクティブなウィンドウの位置とサイズを取得
+        if window:
+            left, top, width, height = window.left, window.top, window.width, window.height
+            bbox = (left, top, left + width, top + height)
+
+            # スクリーンショットを撮る
+            screenshot = ImageGrab.grab(bbox)
+
+            # スクリーンショットのサイズを長辺512pxにスケールダウン（アスペクト比維持）
+            # detailed: highの場合は1999まで
+            longest_side = max(screenshot.size)
+            scale_factor = 1999 / longest_side
+            new_size = (int(screenshot.width * scale_factor), int(screenshot.height * scale_factor))
+            screenshot = screenshot.resize(new_size, Image.ANTIALIAS)
+
+            # スクリーンショットをBase64にエンコード
+            buffered = BytesIO()
+            screenshot.save(buffered, format="PNG")
+            print("Image Captured.")
+            return base64.b64encode(buffered.getvalue()).decode('utf-8')
+
+    def analyze_image(self, user_input):
+        base64_screenshot = self.capture_screen_to_base64()
+
+        response = self.client.chat.completions.create(
+        model="gpt-4-vision-preview",
+        messages=[
+            {
+            "role": "user",
+            "content": [
+                {"type": "text", "text": user_input},
+                {
+                "type": "image_url",
+                "image_url": {
+                    "url": f"data:image/jpeg;base64,{base64_screenshot}",
+                    "detail": "auto",
+                },
+                },
+            ],
+            }
+        ],
+        max_tokens=300,
+        )
+
+        result = response.choices[0].message.content
+        return result

@@ -1,9 +1,9 @@
+python-dotenv
 openai
 tiktoken
 psutil
 PyAudio >= 0.2.13
 webrtcvad >= 2.0.10
-python-dotenv
 google-api-python-client
 git+https://github.com/misja/python-boilerpipe
 numpy
@@ -21,3 +21,5 @@ faster-whisper
 pyyaml
 langchain
 chromedriver-binary==119.0.6045.105.0
+pillow
+pygetwindow

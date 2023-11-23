@@ -47,3 +47,6 @@ class LLMManager:
 
     def add_prompt(self, role, prompt):
         return self.LLM.add_prompt(role, prompt)
+
+    def analyze_image(self, user_input, model=None):
+        return self.LLM.analyze_image(user_input, model=None)
