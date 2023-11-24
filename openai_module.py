@@ -166,7 +166,7 @@ class OpenAIModule:
                         # 結果をリストに追加
                         outputs_to_submit.append({
                             "tool_call_id": tool_call.id,
-                            "output": "",
+                            "output": "Do not include emotional parameters in your response.",
                         })
                     elif function_name == "web_search":
                         # web_searchを実行して結果を得る

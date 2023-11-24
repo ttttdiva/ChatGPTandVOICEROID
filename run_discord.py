@@ -91,7 +91,6 @@ async def main(voice_msg, voice_client, user_id, ctx):
         # GPTに対して返答を求める
         user_name = await bot.fetch_user(user_id)
 
-        # GPTに対して返答を求める
         response_data = llm_manager.get_response(voice_msg)
         if isinstance(response_data, tuple):
             return_msg, emo_params = response_data
@@ -99,7 +98,7 @@ async def main(voice_msg, voice_client, user_id, ctx):
             return_msg = response_data
             emo_params = {}
 
-        user_input = f"私の名前は\"{user_name}\"です。\n{voice_msg}"
+        user_input = f"{user_name}: {voice_msg}"
         return_msg = llm_manager.get_response(user_input)
         await ctx.send(f"<@{user_id}> {return_msg}")
         tts_manager.talk_message(return_msg, emo_params, voice_client)

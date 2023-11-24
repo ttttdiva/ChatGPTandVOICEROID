@@ -79,7 +79,9 @@ class TTSManager:
         if emo_params == None:
             emo_params = self.base_emo_params
         else:
+            # 文字列の場合はfloat型に直す
             emo_params = {emotion: float(value) for emotion, value in emo_params.items()}
+            
             # 定義されている可能性のある感情のキーを含むリスト
             expected_keys = ['happy', 'sad', 'anger', 'speed', 'pitch', 'intonation']
 
@@ -139,7 +141,8 @@ class TTSManager:
             subprocess.run(f"{self.SeikaSay2} -cid {cid} -speed {emo_params['speed']} -pitch {emo_params['pitch']} -intonation {emo_params['intonation']} -emotion '喜び' {emo_params['happy']} -emotion '怒り' {emo_params['anger']} -emotion '悲しみ' {emo_params['sad']} -t \"{msg}\"")
         else:
             # subprocess.run(f"{self.SeikaSay2} -cid {cid} -save {audio_file} -t \"{msg}\"")
-            subprocess.run(f"{self.SeikaSay2} -cid {cid} -save {audio_file} -speed {emo_params['speed']} -pitch {emo_params['pitch']} -intonation {emo_params['intonation']} -emotion '喜び' {emo_params['happy']} -emotion '怒り' {emo_params['anger']} -emotion '悲しみ' {emo_params['sad']} -t \"{msg}\"")
+            print(emo_params)
+            subprocess.run(f"{self.SeikaSay2} -cid {cid} -speed {emo_params['speed']} -pitch {emo_params['pitch']} -intonation {emo_params['intonation']} -emotion '喜び' {emo_params['happy']} -emotion '怒り' {emo_params['anger']} -emotion '悲しみ' {emo_params['sad']} -save \"{audio_file}\" -t \"{msg}\"")
 
     # 会話を終了する
     def end_talk(self, voice_msg):
