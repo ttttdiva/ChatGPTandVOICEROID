@@ -1,5 +1,6 @@
 import asyncio
 import os
+import random
 import re
 import time
 
@@ -29,7 +30,7 @@ except KeyError as e:
 
 character_manager = CharacterManager()
 llm_manager = LLMManager(character_manager.ai_chara, character_manager.ai_dialogues, google_api_key, cx, character_manager.ai_name)
-tts_manager = TTSManager("discord", character_manager.tts_type, character_manager.voice_cid)
+tts_manager = TTSManager("discord", character_manager.tts_type, character_manager.voice_cid, character_manager.emo_coef, character_manager.emo_params)
 
 intents = discord.Intents().all()
 bot = discord.Bot(intents=intents)
@@ -42,19 +43,21 @@ async def main(voice_msg, voice_client, user_id, ctx):
     if character_manager.char_select == False:
         # キャラクター選択処理
         if tts_manager.end_talk(voice_msg):
-            tts_manager.talk_message("さようなら！", voice_client)
+            tts_manager.talk_message("さようなら！", None, voice_client)
             voice_client.disconnect()
 
         # キャラを指定
         if any(name in voice_msg for name in character_manager.all_char_names):
-            ai_name, ai_chara, ai_dialogues, voice_cid, greet, tts_type = character_manager.get_character(voice_msg)
+            ai_name, ai_chara, ai_dialogues, voice_cid, greet, tts_type, emo_coef, emo_params = character_manager.get_character(voice_msg)
             tts_manager.tts_type = tts_type
             tts_manager.voice_cid = voice_cid
+            tts_manager.emo_coef = emo_coef
+            tts_manager.base_emo_params = emo_params
             
             # キャラプロンプトを読み込み
             llm_manager = LLMManager(ai_chara, ai_dialogues, google_api_key, cx, ai_name)
             
-            tts_manager.talk_message(greet, voice_client)
+            tts_manager.talk_message(greet, None, voice_client)
             await ctx.send(f"<@{user_id}> {greet}")
             character_manager.char_select = True
         else:
@@ -62,20 +65,20 @@ async def main(voice_msg, voice_client, user_id, ctx):
     else:
         # 会話メイン処理
         if tts_manager.end_talk(voice_msg):
-            tts_manager.talk_message("End", voice_client)
+            tts_manager.talk_message("End", None, voice_client)
             print('talk終了')
             # 会話ログと要約を保存
             end = llm_manager.end_conversation()
             if end:
-                tts_manager.talk_message(end, voice_client) # なんで書いたか忘れた処理
+                tts_manager.talk_message(end, None, voice_client) # なんで書いたか忘れた処理
             character_manager.char_select = False
 
             # if voice_msg in ["PCをシャットダウン", "おやすみ"]:
-            #     tts_manager.talk_message("おやすみなさい！",voice_client)
+            #     tts_manager.talk_message("おやすみなさい！",None, voice_client)
             #     os.system('shutdown /s /f /t 0')
             return
         elif voice_msg == "前回の続き":
-            tts_manager.talk_message("ちょっと待ってね！", voice_client)
+            tts_manager.talk_message("ちょっと待ってね！", None, voice_client)
             
             # ログファイルから前回の会話を読み込んでmessagesに追加
             llm_manager.load_previous_chat()
@@ -88,11 +91,18 @@ async def main(voice_msg, voice_client, user_id, ctx):
         # GPTに対して返答を求める
         user_name = await bot.fetch_user(user_id)
 
+        # GPTに対して返答を求める
+        response_data = llm_manager.get_response(voice_msg)
+        if isinstance(response_data, tuple):
+            return_msg, emo_params = response_data
+        else:
+            return_msg = response_data
+            emo_params = {}
+
         user_input = f"私の名前は\"{user_name}\"です。\n{voice_msg}"
         return_msg = llm_manager.get_response(user_input)
         await ctx.send(f"<@{user_id}> {return_msg}")
-        tts_manager.talk_message(return_msg, voice_client)
-
+        tts_manager.talk_message(return_msg, emo_params, voice_client)
 
 
 @bot.slash_command()
@@ -189,7 +199,7 @@ async def on_ready():
         if channel:
             voice_client = await channel.connect()
             # 読み上げ
-            tts_manager.talk_message("起動しました！", voice_client)
+            tts_manager.talk_message("起動しました！", None, voice_client)
             # StreamingSinkのインスタンスを作成
             sink = StreamingSink(voice_client)
             ctx = bot.get_channel(int(text_channel))
@@ -239,16 +249,17 @@ async def on_voice_state_update(member, before, after):
 # on_messageイベントのリスナー
 @bot.event
 async def on_message(message):
-    # don't respond to ourselves
-    if message.author == bot.user:
-        return
-
     if message.content == 'ping':
         await message.channel.send('pong')
 
-    elif bot.user.mentioned_in(message):
+    # メンションまたは5分の1でテキストチャンネルに流れたメッセージに反応
+    elif bot.user.mentioned_in(message) or random.randint(0, 4) == 0:
         user_name = message.author.display_name
         user_id = message.author.id
+
+        # don't respond to ourselves
+        if message.author == bot.user:
+            return
 
         # 通話お知らせくんからのメッセージは無視
         if user_name == "通話お知らせくん":

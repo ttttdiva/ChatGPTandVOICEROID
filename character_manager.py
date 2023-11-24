@@ -40,5 +40,7 @@ class CharacterManager:
                 self.voice_cid = char_config['voice_cid']
                 self.greet = char_config['greet']
                 self.tts_type = char_config['tts_type']
-                return char_config['ai_name'], char_config['ai_chara'], char_config['ai_dialogues'], char_config['voice_cid'], char_config['greet'], char_config['tts_type']
+                self.emo_coef = char_config['emo_coef']
+                self.emo_params = char_config['emo_params']
+                return char_config['ai_name'], char_config['ai_chara'], char_config['ai_dialogues'], char_config['voice_cid'], char_config['greet'], char_config['emo_coef'], char_config['emo_params']
         return None, None, None, None, None, None

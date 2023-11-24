@@ -76,6 +76,42 @@ class OpenAIModule:
                         }
                     },
                 },
+                    {"type": "function",
+                    "function": {
+                        "name": "emo_params",
+                        "description": "Always use. Adjusts the emotional value and tone of the response.",
+                        "parameters": {
+                            "type": "object",
+                            "properties": {
+                                "happy": {
+                                    "type": "string",
+                                    "description": "Scale factor for happiness. Can be set between -3.00 and 3.00 (default is 0)"
+                                },
+                                "anger": {
+                                    "type": "string",
+                                    "description": "Scale factor for anger. Can be set between -3.00 and 3.00 (default is 0)"
+                                },
+                                "sad": {
+                                    "type": "string",
+                                    "description": "Scale factor for sadness. Can be set between -3.00 and 3.00 (default is 0)"
+                                },
+                                "speed": {
+                                    "type": "string",
+                                    "description": "Scale factor for speech speed. Can be set between -3.00 and 3.00 (default is 0)"
+                                },
+                                "pitch": {
+                                    "type": "string",
+                                    "description": "Scale factor for pitch. Can be set between -3.00 and 3.00 (default is 0)"
+                                },
+                                "intonation": {
+                                    "type": "string",
+                                    "description": "Scale factor for intonation. Can be set between -3.00 and 3.00 is 0)"
+                                }
+                            },
+                            "required": ["happy", "anger", "sad", "speed", "pitch", "intonation"]
+                        }
+                    }
+                }
                 ],
                 model=model,
             )
@@ -88,6 +124,7 @@ class OpenAIModule:
     def get_response(self, user_input, model=None):
         if model is None:
             model = self.model
+        emo_params = False
         # ユーザーの入力に基づいてメッセージを送信
         message = self.client.beta.threads.messages.create(
             thread_id=self.thread.id,
@@ -119,7 +156,19 @@ class OpenAIModule:
                 for tool_call in tool_calls:
                     function_name = tool_call.function.name
                     arguments = tool_call.function.arguments
-                    if function_name == "web_search":
+                    if function_name == "emo_params":
+                        # 会話から感情値を推定
+                        try:
+                            emo_params = json.loads(arguments)
+                        except:
+                            emo_params = {}
+                        print(f"emo_params: {emo_params}")
+                        # 結果をリストに追加
+                        outputs_to_submit.append({
+                            "tool_call_id": tool_call.id,
+                            "output": "",
+                        })
+                    elif function_name == "web_search":
                         # web_searchを実行して結果を得る
                         arguments = json.loads(arguments)
                         arguments = self.decode_unicode_escapes(arguments["search_word"])
@@ -156,7 +205,10 @@ class OpenAIModule:
         self.save_conversation(user_input, return_msg)
 
         # 最後のメッセージの内容を返す
-        return return_msg
+        if emo_params:
+            return return_msg, emo_params
+        else:
+            return return_msg
 
     def decode_unicode_escapes(self, s):
         if '\\u' in s:

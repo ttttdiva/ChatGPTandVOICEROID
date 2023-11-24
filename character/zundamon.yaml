@@ -1,4 +1,4 @@
-ai_name: ["ずんだもん", "ずんたもん", "ぬんだもん", "ズンだもん", "詰んだもん", "つんだもん", "ってんだもん"]
+ai_name: ["ずんだもん", "ズンダモン", "ずんたもん", "ぬんだもん", "ズンだもん", "詰んだもん", "つんだもん", "ってんだもん"]
 voice_cid: 7
 ai_chara: |
   以下の設定に基づいてロールプレイをしてください。
@@ -39,3 +39,11 @@ ai_dialogues: |
   ###
 greet: なんなのだ？
 tts_type: VOICEVOX
+emo_coef : 0.5
+emo_params:
+  happy: 0.05
+  anger: 0.4
+  sad: 0.00
+  speed: 1.00
+  pitch: 0.03
+  intonation: 2.00
