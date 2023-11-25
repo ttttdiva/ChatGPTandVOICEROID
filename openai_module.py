@@ -16,6 +16,7 @@ class OpenAIModule:
     # Placeholder methods for OpenAI module
     def __init__(self, system_prompt, ai_name, web_search, model="gpt-3.5-1106"):
         self.first_execution = True
+        self.use_chat_api = False
         self.system_prompt = system_prompt
         self.ai_name = ai_name
         # Websearchインスタンス呼び出し
@@ -318,7 +319,7 @@ class OpenAIModule:
 
     def analyze_image(self, user_input, image_base64_list=None):
         if image_base64_list is None:
-            image_base64_list = list(self.capture_screen_to_base64())
+            image_base64_list = [self.capture_screen_to_base64()]
 
         # 各画像のbase64文字列に対応する辞書を生成
         image_messages = [{"type": "image_url","image_url": {"url": f"data:image/jpeg;base64,{image_base64}", "detail": "auto"}} for image_base64 in image_base64_list]
