@@ -22,6 +22,7 @@ class OpenAIModule:
         # Websearchインスタンス呼び出し
         self.web_search = web_search
         self.model = model
+        self.messages = []
         # OpenAIクライアントの初期化
         self.client = OpenAI()
         
@@ -126,6 +127,29 @@ class OpenAIModule:
         if model is None:
             model = self.model
         emo_params = False
+
+
+        # chat.completion対応
+        if self.use_chat_api:
+            if not self.messages:
+                # 初回のリクエストの場合、システムプロンプトを含める
+                self.messages.insert(0, {"role": "system", "content": self.system_prompt})
+            
+            # メッセージ数で管理
+            self.memory_messages()
+
+            # 新しいユーザーの入力をメッセージリストに追加
+            self.add_message("user", user_input)
+            # chat.completion APIを呼び出す際に、過去のメッセージを含める
+            response = self.client.chat.completions.create(
+                model=model,
+                messages=self.messages
+            )
+            # 応答をメッセージリストに追加
+            return_msg = response.choices[0].message.content
+            self.add_message("assistant", return_msg)
+            return return_msg
+
         # ユーザーの入力に基づいてメッセージを送信
         message = self.client.beta.threads.messages.create(
             thread_id=self.thread.id,
@@ -340,3 +364,15 @@ class OpenAIModule:
 
         result = response.choices[0].message.content
         return result
+
+    # chat.completion用メッセージ追加
+    def add_message(self, role, content):
+        self.messages.append({"role": role, "content": content})
+
+    # chat.completion用メッセージ管理
+    def memory_messages(self):
+        if len(self.messages) > 15:
+            # Keep the first item (system prompt) and the last 10 items
+            self.messages = [self.messages[0]] + self.messages[-10:]
+
+

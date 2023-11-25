@@ -110,18 +110,7 @@ async def main(voice_msg, voice_client, user_id, ctx, image_base64_list=None):
 
         await ctx.send(f"<@{user_id}> {return_msg}")
         tts_manager.talk_message(return_msg, emo_params, voice_client)
-        # emo_params = None
-        # response = client.chat.completions.create(
-        # model="gpt-3.5-turbo",
-        # messages=[
-        #     {"role": "system", "content": character_manager.ai_chara + character_manager.ai_dialogues},
-        #     {"role": "user", "content": voice_msg},
-        # ]
-        # )
-        # user_input = f"{user_name}: {voice_msg}"
-        # return_msg = response.choices[0].message.content
-        # await ctx.send(f"<@{user_id}> {return_msg}")
-        # tts_manager.talk_message(return_msg, emo_params, voice_client)
+
 
 
 
@@ -222,10 +211,27 @@ async def status(ctx):
     else:
         rec_s = "not running"
 
+    # 使用しているAPIの確認
+    if llm_manager.LLM.use_chat_api:
+        api_s = "Completion"
+    else:
+        api_s = "Assistants"
+
     await ctx.send(f"""
 キャラクター: {char_s}
 音声認識: {rec_s}
+使用API: {api_s}
 """)
+
+@bot.command(description="Assistantsモードに切り替えます。")
+async def switch_assistants(ctx):
+    llm_manager.switch_to_assistants_mode()
+    await ctx.send("Assistantsモードに切り替えました。")
+
+@bot.command(description="Chatモードに切り替えます。")
+async def switch_chat(ctx):
+    llm_manager.switch_to_chat_mode()
+    await ctx.send("Chatモードに切り替えました。")
 
 # 起動時に特定のボイスチャンネルに接続し、読み上げる
 @bot.event

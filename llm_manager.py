@@ -50,3 +50,9 @@ class LLMManager:
 
     def analyze_image(self, user_input, model=None):
         return self.LLM.analyze_image(user_input, model=None)
+
+    def switch_to_chat_mode(self):
+        self.LLM.use_chat_api = True
+
+    def switch_to_assistants_mode(self):
+        self.LLM.use_chat_api = False
