@@ -6,7 +6,7 @@ from time import sleep
 import psutil
 import yaml
 
-from voicevox_util import talk_voicevox_file, talk_voicevox_stream
+from voicevox_util import talk_voicevox
 
 
 class TTSManager:
@@ -76,43 +76,28 @@ class TTSManager:
         if self.text_only is True:
             return
 
+        # 感情値を整形
         if emo_params == None:
             emo_params = self.base_emo_params
         else:
-            emo_params = {emotion: float(value) for emotion, value in emo_params.items()}
-            # 定義されている可能性のある感情のキーを含むリスト
-            expected_keys = ['happy', 'sad', 'anger', 'speed', 'pitch', 'intonation']
-
-            # 不足しているキーを確認し、存在しない場合は0.00で補完する
-            for key in expected_keys:
-                if key not in emo_params:
-                    emo_params[key] = 0.00
-
-            # 想定していないキーがあれば削除する
-            keys_to_remove = [key for key in emo_params if key not in expected_keys]
-            for key in keys_to_remove:
-                del emo_params[key]
-
             emo_params = self.calculate_emotion_values(self.base_emo_params, emo_params, self.emo_coef)
 
         if cid == None:
             cid = self.voice_cid
 
         if self.caller == "local":
-            if self.tts_type == "VOICEROID":
-                self.talk_voiceroid(msg, cid, emo_params)
-            elif self.tts_type == "VOICEVOX":
-                talk_voicevox_stream(msg, cid, speed=1.0, pitch=0.03, intonation=2.0)
+            audio_file = None
         elif self.caller == "discord":
             audio_file = "./temp/voice.wav"
-            if self.tts_type == "VOICEROID":
-                self.talk_voiceroid(msg, cid, emo_params, audio_file)
-            elif self.tts_type == "VOICEVOX":
-                talk_voicevox_file(msg, audio_file, cid, speed=1.0, pitch=0.03, intonation=2.0)
 
-            if voice_client and voice_client.is_connected():
-                audio_source = self.discord.FFmpegPCMAudio(audio_file)
-                voice_client.play(audio_source)
+        if self.tts_type == "VOICEROID":
+            self.talk_voiceroid(msg, cid, emo_params, audio_file)
+        elif self.tts_type == "VOICEVOX":
+            talk_voicevox(msg, cid, emo_params, audio_file)
+
+        if voice_client and voice_client.is_connected():
+            audio_source = self.discord.FFmpegPCMAudio(audio_file)
+            voice_client.play(audio_source)
 
     def talk_voiceroid(self, msg, cid, emo_params, audio_file=None):
         # emo_paramsを適切な範囲で値を収める処理
@@ -132,18 +117,20 @@ class TTSManager:
             
             emo_params[emotion] = round(adjusted_value, 2)
 
-        if audio_file is None:
-            # SeikaSay2.exe -cid 2158 -speed 1.35 -pitch 1.1 -intonation 1.6 -emotion "喜び" 0.65 -t "おはよう！"
-            # subprocess.run(f"{self.SeikaSay2} -cid {cid} -t \"{msg}\"")
-            print(emo_params)
-            subprocess.run(f"{self.SeikaSay2} -cid {cid} -speed {emo_params['speed']} -pitch {emo_params['pitch']} -intonation {emo_params['intonation']} -emotion '喜び' {emo_params['happy']} -emotion '怒り' {emo_params['anger']} -emotion '悲しみ' {emo_params['sad']} -t \"{msg}\"")
-        else:
-            # subprocess.run(f"{self.SeikaSay2} -cid {cid} -save {audio_file} -t \"{msg}\"")
-            subprocess.run(f"{self.SeikaSay2} -cid {cid} -save {audio_file} -speed {emo_params['speed']} -pitch {emo_params['pitch']} -intonation {emo_params['intonation']} -emotion '喜び' {emo_params['happy']} -emotion '怒り' {emo_params['anger']} -emotion '悲しみ' {emo_params['sad']} -t \"{msg}\"")
+        emotions = {'happy': '喜び', 'sad': '悲しみ', 'anger': '怒り'}
+        command = [self.SeikaSay2, "-cid", str(cid), "-speed", str(emo_params['speed']), "-pitch", str(emo_params['pitch']), "-intonation", str(emo_params['intonation'])]
+        for eng, jpn in emotions.items():
+            if eng in emo_params:
+                command.extend(["-emotion", jpn, str(emo_params[eng])])
+        if audio_file:
+            command.extend(["-save", audio_file])
+        command.extend(["-t", msg])
+        
+        subprocess.run(command)  # コマンドを実行
 
     # 会話を終了する
     def end_talk(self, voice_msg):
-        pattern = "^(会話.?終了.?|対話.?終了.?|ストップ|エンド|PCをシャットダウン|おやすみ)$"
+        pattern = "^(.*会話.?終了.*|.*対話.?終了.*|ストップ|エンド|PCをシャットダウン|おやすみ)$"
         if re.search(pattern, voice_msg):
             return True
         else:
@@ -159,6 +146,21 @@ class TTSManager:
 
     # 新しい感情値を計算してEMAを更新する関数
     def calculate_emotion_values(self, base_emo_params, dynamic_emo_params, emo_coef):
+        # 文字列の場合はfloat型に直す
+        dynamic_emo_params = {emotion: float(value) for emotion, value in dynamic_emo_params.items()}
+        
+        # 定義されている可能性のある感情のキーを含むリスト
+        expected_keys = list(self.base_emo_params.keys())
+
+        # 不足しているキーを確認し、存在しない場合は0.00で補完する
+        for key in expected_keys:
+            if key not in dynamic_emo_params:
+                dynamic_emo_params[key] = 0.00
+
+        # 想定していないキーがあれば削除する
+        keys_to_remove = [key for key in dynamic_emo_params if key not in expected_keys]
+        for key in keys_to_remove:
+            del dynamic_emo_params[key]
         combined_values = {}
         
         # ベースの感情値と動的感情値を組み合わせる

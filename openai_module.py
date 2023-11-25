@@ -121,7 +121,7 @@ class OpenAIModule:
         self.thread = self.client.beta.threads.create()
 
     # ChatGPTに問い合わせ
-    def get_response(self, user_input, model=None):
+    def get_response(self, user_input, model=None, image_base64_list=None):
         if model is None:
             model = self.model
         emo_params = False
@@ -166,7 +166,7 @@ class OpenAIModule:
                         # 結果をリストに追加
                         outputs_to_submit.append({
                             "tool_call_id": tool_call.id,
-                            "output": "",
+                            "output": "Do not include emotional parameters in your response.",
                         })
                     elif function_name == "web_search":
                         # web_searchを実行して結果を得る
@@ -180,7 +180,8 @@ class OpenAIModule:
                             "output": result,
                         })
                     elif function_name == "analyze_image":
-                        result = self.analyze_image(user_input)
+                        # 視覚言語モデルに画像を渡す
+                        result = self.analyze_image(user_input, image_base64_list)
                         # 結果をリストに追加
                         outputs_to_submit.append({
                             "tool_call_id": tool_call.id,
@@ -203,6 +204,10 @@ class OpenAIModule:
         return_msg = messages.data[0].content[0].text.value
 
         self.save_conversation(user_input, return_msg)
+
+        # メッセージの内容がtupleの場合、1つ目のみ取得する
+        if isinstance(return_msg, tuple):
+            return_msg = return_msg[0]
 
         # 最後のメッセージの内容を返す
         if emo_params:
@@ -311,27 +316,25 @@ class OpenAIModule:
             print("Image Captured.")
             return base64.b64encode(buffered.getvalue()).decode('utf-8')
 
-    def analyze_image(self, user_input):
-        base64_screenshot = self.capture_screen_to_base64()
+    def analyze_image(self, user_input, image_base64_list=None):
+        if image_base64_list is None:
+            image_base64_list = list(self.capture_screen_to_base64())
+
+        # 各画像のbase64文字列に対応する辞書を生成
+        image_messages = [{"type": "image_url","image_url": {"url": f"data:image/jpeg;base64,{image_base64}", "detail": "auto"}} for image_base64 in image_base64_list]
+
+        # テキストメッセージを追加
+        message_content = [{"type": "text", "text": user_input}] + image_messages
 
         response = self.client.chat.completions.create(
-        model="gpt-4-vision-preview",
-        messages=[
-            {
-            "role": "user",
-            "content": [
-                {"type": "text", "text": user_input},
+            model="gpt-4-vision-preview",
+            messages=[
                 {
-                "type": "image_url",
-                "image_url": {
-                    "url": f"data:image/jpeg;base64,{base64_screenshot}",
-                    "detail": "auto",
-                },
-                },
+                    "role": "user",
+                    "content": message_content
+                }
             ],
-            }
-        ],
-        max_tokens=2000,
+            max_tokens=2000,
         )
 
         result = response.choices[0].message.content

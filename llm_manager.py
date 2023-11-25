@@ -21,8 +21,8 @@ class LLMManager:
         else:
             self.LLM = LangChainModule(self.system_prompt, self.ai_name, web_search, self.model)
 
-    def get_response(self, user_input, model=None):
-        return self.LLM.get_response(user_input, model)
+    def get_response(self, user_input, model=None, image_base64_list=None):
+        return self.LLM.get_response(user_input, model, image_base64_list)
 
     def summary_conversation(self, dict_messages, previous_summary):
         return self.LLM.summary_conversation(dict_messages, previous_summary)

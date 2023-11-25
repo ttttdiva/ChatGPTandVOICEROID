@@ -30,6 +30,7 @@ tts_manager = TTSManager("local", character_manager.tts_type, character_manager.
 
 def main():
     global llm_manager
+    global tts_manager
     global voice_cid
     tts_manager.talk_message("起動しました！")
     # try:
@@ -47,10 +48,7 @@ def main():
             if any(name in voice_msg for name in character_manager.all_char_names):
                 # キャラの情報を取得
                 ai_name, ai_chara, ai_dialogues, voice_cid, greet, tts_type, emo_coef, emo_params = character_manager.get_character(voice_msg)
-                tts_manager.tts_type = tts_type
-                tts_manager.voice_cid = voice_cid
-                tts_manager.emo_coef = emo_coef
-                tts_manager.base_emo_params = emo_params
+                tts_manager = TTSManager("local", tts_type, voice_cid, emo_coef, emo_params)
                 
                 # キャラプロンプトを読み込み
                 llm_manager = LLMManager(ai_chara, ai_dialogues, google_api_key, cx, ai_name)

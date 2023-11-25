@@ -1,9 +1,11 @@
 import asyncio
+import base64
 import os
 import random
 import re
 import time
 
+import aiohttp
 import discord
 import openai
 from discord.ext import tasks
@@ -37,22 +39,26 @@ bot = discord.Bot(intents=intents)
 
 
 
-async def main(voice_msg, voice_client, user_id, ctx):
+
+from openai import OpenAI
+
+client = OpenAI()
+
+async def main(voice_msg, voice_client, user_id, ctx, image_base64_list=None):
     global llm_manager
+    global tts_manager
     global voice_cid
     if character_manager.char_select == False:
         # キャラクター選択処理
         if tts_manager.end_talk(voice_msg):
             tts_manager.talk_message("さようなら！", None, voice_client)
-            voice_client.disconnect()
+            await ctx.send(f"さようなら！")
+            await voice_client.disconnect()
 
         # キャラを指定
         if any(name in voice_msg for name in character_manager.all_char_names):
             ai_name, ai_chara, ai_dialogues, voice_cid, greet, tts_type, emo_coef, emo_params = character_manager.get_character(voice_msg)
-            tts_manager.tts_type = tts_type
-            tts_manager.voice_cid = voice_cid
-            tts_manager.emo_coef = emo_coef
-            tts_manager.base_emo_params = emo_params
+            tts_manager = TTSManager("discord", tts_type, voice_cid, emo_coef, emo_params)
             
             # キャラプロンプトを読み込み
             llm_manager = LLMManager(ai_chara, ai_dialogues, google_api_key, cx, ai_name)
@@ -66,6 +72,7 @@ async def main(voice_msg, voice_client, user_id, ctx):
         # 会話メイン処理
         if tts_manager.end_talk(voice_msg):
             tts_manager.talk_message("End", None, voice_client)
+            await ctx.send(f"talk終了")
             print('talk終了')
             # 会話ログと要約を保存
             end = llm_manager.end_conversation()
@@ -91,21 +98,34 @@ async def main(voice_msg, voice_client, user_id, ctx):
         # GPTに対して返答を求める
         user_name = await bot.fetch_user(user_id)
 
-        # GPTに対して返答を求める
-        response_data = llm_manager.get_response(voice_msg)
+        user_input = f"{user_name}: {voice_msg}"
+        if image_base64_list:
+            user_input += f"\n画像を添付しました。"
+        response_data = llm_manager.get_response(user_input, None, image_base64_list)
         if isinstance(response_data, tuple):
             return_msg, emo_params = response_data
         else:
             return_msg = response_data
             emo_params = {}
 
-        user_input = f"私の名前は\"{user_name}\"です。\n{voice_msg}"
-        return_msg = llm_manager.get_response(user_input)
         await ctx.send(f"<@{user_id}> {return_msg}")
         tts_manager.talk_message(return_msg, emo_params, voice_client)
+        # emo_params = None
+        # response = client.chat.completions.create(
+        # model="gpt-3.5-turbo",
+        # messages=[
+        #     {"role": "system", "content": character_manager.ai_chara + character_manager.ai_dialogues},
+        #     {"role": "user", "content": voice_msg},
+        # ]
+        # )
+        # user_input = f"{user_name}: {voice_msg}"
+        # return_msg = response.choices[0].message.content
+        # await ctx.send(f"<@{user_id}> {return_msg}")
+        # tts_manager.talk_message(return_msg, emo_params, voice_client)
 
 
-@bot.slash_command()
+
+@bot.slash_command(description="音声認識を開始")
 async def start_record(ctx: discord.ApplicationContext):
     # ボットがボイスチャンネルに接続しているか確認
     if ctx.voice_client is None:
@@ -149,7 +169,7 @@ async def check_voice_loop(sink, ctx):
     else:
         sink.is_voice_active = True
 
-@bot.slash_command()
+@bot.slash_command(description="音声認識を終了")
 async def stop_recording(ctx: discord.ApplicationContext):
     if ctx.voice_client:
         ctx.voice_client.stop_recording()
@@ -187,6 +207,25 @@ async def leave(ctx):
         await voice_client.disconnect()
     else:
         await ctx.send("ボットはボイスチャンネルに接続していません。")
+
+@bot.command(description="Botのステータスを表示します。")
+async def status(ctx):
+    # キャラクターの確認
+    if character_manager.char_select:
+        char_s = llm_manager.ai_name
+    else:
+        char_s = "キャラクターを選択してください (ex:`@Aoi ずんだもん`)"
+
+    # 音声認識の確認
+    if check_voice_loop.is_running():
+        rec_s = "running"
+    else:
+        rec_s = "not running"
+
+    await ctx.send(f"""
+キャラクター: {char_s}
+音声認識: {rec_s}
+""")
 
 # 起動時に特定のボイスチャンネルに接続し、読み上げる
 @bot.event
@@ -267,10 +306,24 @@ async def on_message(message):
 
         clean_content = re.sub(r'<@!?(\d+)> ', '', message.content)
         print(f"You said: {clean_content}")
+        # メッセージに添付された画像があるかを確認
+        image_base64_list = []
+        if message.attachments:
+            for attachment in message.attachments:
+                if attachment.content_type.startswith('image/'):
+                    # 画像をダウンロードし、base64に変換
+                    async with aiohttp.ClientSession() as session:
+                        async with session.get(attachment.url) as resp:
+                            image_bytes = await resp.read()
+                            image_base64 = base64.b64encode(image_bytes).decode('utf-8')
+                            image_base64_list.append(image_base64)
 
         voice_client = discord.utils.get(bot.voice_clients)
 
-        await main(clean_content, voice_client, user_id, message.channel)
+        if image_base64_list:
+            await main(clean_content, voice_client, user_id, message.channel, image_base64_list)
+        else:
+            await main(clean_content, voice_client, user_id, message.channel)
 
 
 bot.run(token)

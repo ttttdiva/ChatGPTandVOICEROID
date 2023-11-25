@@ -8,7 +8,7 @@ import pyaudio
 import requests
 
 
-def adjust_voice_parameters(query_data, speed, pitch, intonation):
+def adjust_voice_parameters(query_data, emo_params, volume):
     """
     話速、ピッチ、抑揚のパラメータを調整します。
 
@@ -16,9 +16,10 @@ def adjust_voice_parameters(query_data, speed, pitch, intonation):
     :param pitch_scale: ピッチのスケール係数-0.15～0.15まで設定可能（0がデフォルト）
     :param intonation_scale: 抑揚のスケール係数0～2.0まで設定可能（1.0がデフォルト）
     """
-    query_data['speedScale'] = speed
-    query_data['pitchScale'] = pitch
-    query_data['intonationScale'] = intonation
+    query_data['speedScale'] = emo_params["speed"]
+    query_data['pitchScale'] = emo_params["pitch"]
+    query_data['intonationScale'] = emo_params["intonation"]
+    query_data['volumeScale'] = volume
 
     return query_data
 
@@ -47,47 +48,75 @@ def synthesis(speaker, query_data, max_retry):
     else:
         raise ConnectionError("音声エラー：リトライ回数が上限に到達しました。 synthesis : ", r)
 
-def talk_voicevox_file(texts, audio_file, speaker=7, speed=1.0, pitch=0, intonation=1.0, max_retry=20):
-    # 音声ファイルを読み上げる
-    if not texts:
-        texts = "ちょっと、通信状態悪いかも？"
-    texts = re.split("(?<=！|。|？)", texts)
-    for text in texts:
-        if text:  # 空のテキストをスキップ
-            # audio_query
-            query_data = audio_query(text, speaker, max_retry)
-            # 話速、音高、抑揚を設定
-            query_data = adjust_voice_parameters(query_data, speed, pitch, intonation)
-            # synthesis
-            voice_data = synthesis(speaker, query_data, max_retry)
-            with wave.open(audio_file, 'wb') as wf:
-                wf.setnchannels(1)  # モノラル
-                wf.setsampwidth(2)  # サンプルサイズは16ビット (2バイト)
-                wf.setframerate(24000)  # サンプリングレートは24000Hz
-                wf.writeframes(voice_data)  # 無音データと音声データを結合して書き込む
+def select_voice_preset(emo_params, speaker):
+    if emo_params == None:
+        emo_params =  {'speed': 1, 'pitch': 0, 'intonation': 1}
+        return emo_params, speaker
+    params_copy = emo_params.copy()
+    params_copy.pop('speed', None)
+    params_copy.pop('pitch', None)
+    params_copy.pop('intonation', None)
 
-def talk_voicevox_stream(texts, speaker=7, speed=1.0, pitch=0, intonation=1.0, max_retry=20):
-    # 音声ファイルを読み上げる
+    
+    # 指定された speaker の値に応じて voice_presets を代入
+    # ずんだもん
+    if speaker in [3, 1, 7, 5, 22, 38]:
+        print("voice_presetsは実行されてる")
+        voice_presets = {'happy': 1, 'anger': 7, 'sad': 38}
+    # 四国めたん
+    elif speaker in [2, 0, 6, 4, 36, 37]:
+        voice_presets = {'happy': 0, 'anger': 6, 'sad': 36}
+    # 九州そら
+    elif speaker in [16, 15, 18, 17, 19]:
+        voice_presets = {'happy': 15, 'anger': 18, 'sad': 19}
+    # ナースロボ タイプT
+    elif speaker in [47, 48, 49, 50]:
+        voice_presets = {'happy': 48, 'anger': 49, 'sad': 50}
+    # 不明の場合はそのまま返す
+    else:
+        return emo_params, speaker
+
+    # 最も高い感情値を持つ感情を見つける
+    max_emo = max(params_copy, key=params_copy.get)
+
+    # 感情値が1.5以上の場合のみボイスプリセットを反映
+    if float(params_copy[max_emo]) >= 0.7:
+        print("max_emoもカウント成功")
+        return emo_params, voice_presets.get(max_emo, speaker)
+    else:
+        return emo_params, speaker  # デフォルト
+
+def talk_voicevox(texts, speaker, emo_params, audio_file=None):
     if not texts:
         texts = "ちょっと、通信状態悪いかも？"
+
+    if audio_file:
+        volume = 2.0
+    else:
+        volume = 1.3
+
+    emo_params, speaker = select_voice_preset(emo_params, speaker)
+    print(speaker)
+
+    max_retry = 20
     texts = re.split("(?<=！|。|？)", texts)
     for text in texts:
-        if text:  # 空のテキストをスキップ
-            # audio_query
+        if text:
             query_data = audio_query(text, speaker, max_retry)
-            # 話速、音高、抑揚を設定
-            query_data = adjust_voice_parameters(query_data, speed, pitch, intonation)
-            # synthesis
+            query_data = adjust_voice_parameters(query_data, emo_params, volume)
             voice_data = synthesis(speaker, query_data, max_retry)
-            # 音声の再生
-            p = pyaudio.PyAudio()
-            # Open the stream
-            stream = p.open(format=pyaudio.paInt16, channels=1, rate=24000, output=True)
-            # 再生を少し遅らせる（開始時ノイズが入るため）
-            time.sleep(0.2) # 0.2秒遅らせる
-            # Play the stream
-            stream.write(voice_data)
-            # Close the stream
-            stream.stop_stream()
-            stream.close()
-            p.terminate()
+
+            if audio_file:
+                with wave.open(audio_file, 'wb') as wf:
+                    wf.setnchannels(1)
+                    wf.setsampwidth(2)
+                    wf.setframerate(24000)
+                    wf.writeframes(voice_data)
+            else:
+                p = pyaudio.PyAudio()
+                stream = p.open(format=pyaudio.paInt16, channels=1, rate=24000, output=True)
+                time.sleep(0.2)
+                stream.write(voice_data)
+                stream.stop_stream()
+                stream.close()
+                p.terminate()
