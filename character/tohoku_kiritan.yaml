@@ -30,3 +30,8 @@ ai_dialogues: |
   ###
 greet: なんでしょう？
 tts_type: VOICEROID
+emo_coef : 0.8
+emo_params:
+  speed: 0.94
+  pitch: 0.88
+  intonation: 0.74

@@ -4,7 +4,7 @@ default_character: "ずんだもん"
 device_index: 1
 Text_Only: False
 tts_settings:
-  Assistant_Seika_flag: True
+  Assistant_Seika_flag: False
   Assistant_Seika: "\"%PROGRAMFILES%\\510Product\\AssistantSeika\\AssistantSeika.exe\""
   Assistant_Seika_path: "\"%PROGRAMFILES%\\510Product\\AssistantSeika\""
   SeikaSay2: "%PROGRAMFILES%\\510Product\\AssistantSeika\\SeikaSay2\\SeikaSay2.exe"
