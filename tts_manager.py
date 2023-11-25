@@ -117,16 +117,14 @@ class TTSManager:
             
             emo_params[emotion] = round(adjusted_value, 2)
 
-        emotions = {'happy': '喜び', 'sad': '悲しみ', 'anger': '怒り'}
-        command = [self.SeikaSay2, "-cid", str(cid), "-speed", str(emo_params['speed']), "-pitch", str(emo_params['pitch']), "-intonation", str(emo_params['intonation'])]
-        for eng, jpn in emotions.items():
-            if eng in emo_params:
-                command.extend(["-emotion", jpn, str(emo_params[eng])])
-        if audio_file:
-            command.extend(["-save", audio_file])
-        command.extend(["-t", msg])
-        
-        subprocess.run(command)  # コマンドを実行
+        if audio_file is None:
+            # SeikaSay2.exe -cid 2158 -speed 1.35 -pitch 1.1 -intonation 1.6 -emotion "喜び" 0.65 -t "おはよう！"
+            # subprocess.run(f"{self.SeikaSay2} -cid {cid} -t \"{msg}\"")
+            print(emo_params)
+            subprocess.run(f"{self.SeikaSay2} -cid {cid} -speed {emo_params['speed']} -pitch {emo_params['pitch']} -intonation {emo_params['intonation']} -emotion '喜び' {emo_params['happy']} -emotion '怒り' {emo_params['anger']} -emotion '悲しみ' {emo_params['sad']} -t \"{msg}\"")
+        else:
+            # subprocess.run(f"{self.SeikaSay2} -cid {cid} -save {audio_file} -t \"{msg}\"")
+            subprocess.run(f"{self.SeikaSay2} -cid {cid} -save {audio_file} -speed {emo_params['speed']} -pitch {emo_params['pitch']} -intonation {emo_params['intonation']} -emotion '喜び' {emo_params['happy']} -emotion '怒り' {emo_params['anger']} -emotion '悲しみ' {emo_params['sad']} -t \"{msg}\"")
 
     # 会話を終了する
     def end_talk(self, voice_msg):
