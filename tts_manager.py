@@ -6,6 +6,7 @@ from time import sleep
 import psutil
 import yaml
 
+from coeiroink_util import talk_coeiroink
 from voicevox_util import talk_voicevox
 
 
@@ -36,6 +37,7 @@ class TTSManager:
         
         self.VOICEROID = os.path.expandvars(config['tts_settings']['VOICEROID'])
         self.VOICEVOX = os.path.expandvars(config['tts_settings']['VOICEVOX'])
+        self.COEIROINK = config['tts_settings']['COEIROINK']
 
         self.wakeup_app()
 
@@ -92,6 +94,9 @@ class TTSManager:
             self.talk_voiceroid(msg, cid, emo_params, audio_file)
         elif self.tts_type == "VOICEVOX":
             talk_voicevox(msg, cid, emo_params, audio_file, voice_client)
+            return
+        elif self.tts_type == "COEIROINK":
+            talk_coeiroink(msg, cid, emo_params, audio_file, voice_client)
             return
 
         if voice_client and voice_client.is_connected():
