@@ -20,9 +20,7 @@ class TTSManager:
         # 感情値のEMAを管理するインスタンスを作成
         self.emotion_history_ema = EmotionHistoryEMA()
 
-        if self.caller == "local":
-            pass
-        elif self.caller == "discord":
+        if caller == "discord":
             import discord
             self.discord = discord
 
@@ -93,7 +91,8 @@ class TTSManager:
         if self.tts_type == "VOICEROID":
             self.talk_voiceroid(msg, cid, emo_params, audio_file)
         elif self.tts_type == "VOICEVOX":
-            talk_voicevox(msg, cid, emo_params, audio_file)
+            talk_voicevox(msg, cid, emo_params, audio_file, voice_client)
+            return
 
         if voice_client and voice_client.is_connected():
             audio_source = self.discord.FFmpegPCMAudio(audio_file)

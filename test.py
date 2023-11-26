@@ -1,130 +1,77 @@
+import os
 import random
+import re
 
-# ベースとなるemotion_valuesの定義
-base_emotion_values = {
-    "happy": 0.65,
-    "sadness": 0.00,
-    "anger": 0.00,
-    "speed": 1.35,
-    "pitch": 1.10,
-    "intonation": 1.00,
-    # その他の感情パラメータ...
-}
+import discord
+import openai
+from dotenv import find_dotenv, load_dotenv
 
-# キャラクターごとのadjustment_factorを設定
-character_adjustment_factors = {
-    "character1": 0.2,
-    "character2": 0.9,
-    # 他のキャラクターの係数もここに設定...
-}
+from character_manager import CharacterManager
+from llm_manager import LLMManager
+from tts_manager import TTSManager
 
+# 環境変数を読み込み
+_ = load_dotenv(find_dotenv())
+try:
+    openai.api_key = os.environ['OPENAI_API_KEY']
+    google_api_key = os.environ['google_api_key']
+    cx = os.environ['cx']
+    token = "MTE3NTEzMTY0MzgyNTEwMjg3OA.G52tW4.2DtbJ4C8ZRnSlwaCKlAYfz_7UN9qgs9Q42KN1M"
+    text_channel = os.environ['Discord_Text_Channel_ID']
+    voice_channel = os.environ['Discord_Voice_Channel_ID']
+    server_id = os.environ['Discord_Server_ID']
+except KeyError as e:
+    print(f"環境変数{e}が設定されていません。")
+    input()
 
-def calculate_function_calling_emotion_values():
-    random_num1 = round(random.uniform(-3, 3), 2)
-    random_num2 = round(random.uniform(-3, 3), 2)
-    random_num3 = round(random.uniform(-3, 3), 2)
+character_manager = CharacterManager()
+llm_manager = LLMManager(character_manager.ai_chara, character_manager.ai_dialogues, google_api_key, cx, character_manager.ai_name)
+tts_manager = TTSManager("discord", character_manager.tts_type, character_manager.voice_cid, character_manager.emo_coef, character_manager.emo_params)
 
-    current_emotion_values = {
-        "happy": random_num1,
-        "sadness": random_num2,
-        "anger": random_num3,
-        # その他の感情パラメータ...
-    }
-    return current_emotion_values
+intents = discord.Intents().all()
+bot = discord.Bot(intents=intents)
 
-# 感情値の履歴を保存するためのクラス
-class EmotionHistoryEMA:
-    def __init__(self, smoothing_factor=0.65):
-        self.smoothing_factor = smoothing_factor
-        self.ema_values = {}
-
-    def update_ema(self, current_values):
-        if not self.ema_values:  # 初回の場合は現在の値をそのまま使用
-            self.ema_values = current_values
-            return self.ema_values
-
-        updated_ema = {}
-        for emotion, current_value in current_values.items():
-            previous_ema = self.ema_values.get(emotion, current_value)
-            new_ema = self.smoothing_factor * current_value + (1 - self.smoothing_factor) * previous_ema
-            updated_ema[emotion] = round(new_ema, 2)  # 小数点第2位で切り捨て
-
-        self.ema_values = updated_ema
-        return updated_ema
-
-# 感情値のEMAを管理するインスタンスを作成
-emotion_history_ema = EmotionHistoryEMA()
-
-# 新しい感情値を計算してEMAを更新する関数
-def calculate_emotion_values(base_values, dynamic_values, character):
-    adjustment_factor = character_adjustment_factors.get(character, 0.1)
-    combined_values = {}
-
-    # ベースの感情値と動的感情値を組み合わせる
-    for emotion, base_value in base_values.items():
-        dynamic_value = dynamic_values.get(emotion, 0) * adjustment_factor
-        combined_value = base_value + dynamic_value
-        combined_values[emotion] = combined_value
-
-    # EMAを更新して最新の感情値を取得
-    ema_values = emotion_history_ema.update_ema(combined_values)
-
-    # 最終的な感情値を調整（小数点の制御）
-    final_emotion_values = {emotion: round(value, 2) for emotion, value in ema_values.items()}
-    return final_emotion_values
-
-
-
-
-
-
-
-# 使用例
-character = "character1"
-
-for i in range(10):
-    function_calling_emotion_values = calculate_function_calling_emotion_values()
-
-    if i == 0:
-        function_calling_emotion_values = {
-            "happy": -3,
-            "sadness": 300,
-            "anger": -3,
-            # その他の感情パラメータ...
-        }
-    else:
-        function_calling_emotion_values = {
-            "happy": 0,
-            "sadness": 0,
-            "anger": 0,
-            # その他の感情パラメータ...
-        }
-
-    # 定義されている可能性のある感情のキーを含むリスト
-    expected_keys = ['happy', 'sadness', 'anger', 'speed', 'pitch', 'intonation']
-
-    # 不足しているキーを確認し、存在しない場合は0.00で補完する
-    for key in expected_keys:
-        if key not in function_calling_emotion_values:
-            function_calling_emotion_values[key] = 0.00
-
-    new_emotion_values = calculate_emotion_values(base_emotion_values, function_calling_emotion_values, character)
-
-    # final_emotion_valuesに適切な範囲で値を収める処理
-    for emotion, value in new_emotion_values.items():
-        if emotion in ['happy', 'sad', 'anger']:
-            # happy, sad, anger の場合、0～1の範囲に収める
-            adjusted_value = min(max(value, 0.0), 1.0)
-        elif emotion in 'speed':
-            # speed の場合、0.5～4の範囲に収める
-            adjusted_value = min(max(value, 0.5), 4.0)
-        elif emotion in 'pitch':
-            # pitch の場合、0.5～2の範囲に収める
-            adjusted_value = min(max(value, 0.5), 2.0)
+# 起動時に特定のボイスチャンネルに接続し、読み上げる
+@bot.event
+async def on_ready():
+    print('Discord Bot起動：', bot.user)
+    # 特定のギルド（サーバー）とチャンネルでのみ動作可能
+    guild = bot.get_guild(int(server_id))
+    if guild:
+        channel = guild.get_channel(int(voice_channel))
+        if channel:
+            await channel.connect()
         else:
-            # intonation の場合、0～2の範囲に収める
-            adjusted_value = min(max(value, 0.0), 2.0)
-        
-        new_emotion_values[emotion] = round(adjusted_value, 2)
+            print("指定されたチャンネルが見つかりません。")
+    else:
+        print("指定されたギルド（サーバー）が見つかりません。")
 
-    print(new_emotion_values)
+# on_messageイベントのリスナー
+@bot.event
+async def on_message(message):
+    if message.content == 'ping':
+        await message.channel.send('pong')
+
+    if "test" in message.content:
+        clean_content = re.sub(r'<@!?(\d+)> ', '', message.content).replace("test","")
+        voice_client = discord.utils.get(bot.voice_clients)
+        tts_manager.talk_message(clean_content, None, voice_client)
+
+    # メンションまたは5分の1でテキストチャンネルに流れたメッセージに反応
+    elif bot.user.mentioned_in(message) or random.randint(0, 4) == 0:
+        user_name = message.author.display_name
+        user_id = message.author.id
+
+        # don't respond to ourselves
+        if message.author == bot.user:
+            return
+
+        # 通話お知らせくんからのメッセージは無視
+        if user_name == "通話お知らせくん":
+            return
+
+        clean_content = re.sub(r'<@!?(\d+)> ', '', message.content)
+        print(f"You said: {clean_content}")
+
+
+bot.run(token)
