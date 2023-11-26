@@ -14,11 +14,12 @@ from PIL import Image, ImageGrab
 
 class OpenAIModule:
     # Placeholder methods for OpenAI module
-    def __init__(self, system_prompt, ai_name, web_search, model="gpt-3.5-1106"):
+    def __init__(self, system_prompt, ai_name, web_search, model="gpt-3.5-turbo-1106"):
         self.first_execution = True
         self.use_chat_api = False
         self.system_prompt = system_prompt
-        self.ai_name = ai_name
+        self.ai_name = ai_name[0]
+        self.ai_name_list = ai_name
         # Websearchインスタンス呼び出し
         self.web_search = web_search
         self.model = model
@@ -33,7 +34,7 @@ class OpenAIModule:
         )
         self.assistant_id = None
         for assistant in assistant_list.data:
-            if assistant.name == ai_name:
+            if assistant.name == self.ai_name:
                 self.assistant_id = assistant.id
                 break
         
@@ -41,7 +42,7 @@ class OpenAIModule:
         if not self.assistant_id:
             print("既存Assistantsが存在しませんでした。新規作成します。")
             assistant = self.client.beta.assistants.create(
-                name=ai_name,
+                name=self.ai_name,
                 instructions=system_prompt,
                 tools=[
                     {"type": "retrieval"},
@@ -135,6 +136,37 @@ class OpenAIModule:
                 # 初回のリクエストの場合、システムプロンプトを含める
                 self.messages.insert(0, {"role": "system", "content": self.system_prompt})
             
+            if "検索して" in user_input:
+                names_formatted = "」「".join(f'"{name}"' for name in self.ai_name_list)
+                response = self.client.chat.completions.create(
+                    model="gpt-4-1106-preview",
+                    messages=[
+                        {"role": "system", "content": f"""
+以下の質問に基づいて、最も関連性が高く、検索結果を最適に絞り込むことができるキーワードを生成してください。
+質問の主題、必要とされる情報、およびその独特なコンテキストを考慮した上で、キーワードを選定してください。
+質問の情報から不要な詳細を取り除き、検索に最も有用な要素を抽出することを心掛けてください。
+
+「{names_formatted}」等は{self.ai_name}というキャラクターのことを指します。
+
+回答は必ず1行だけ出力してください。
+"""},
+                        {"role": "user", "content": user_input},
+                    ]
+                )
+                search_word = response.choices[0].message.content
+                
+                result = self.web_search.bing_gpt(search_word, self.system_prompt)
+                self.memory_messages()
+                self.add_message("user", user_input)
+                self.add_message("assistant", result)
+                return result
+            elif any(key in user_input for key in ["画像を添付しました。", "画像を認識して"]):
+                result = self.analyze_image(user_input, image_base64_list)
+                self.memory_messages()
+                self.add_message("user", user_input)
+                self.add_message("assistant", result)
+                return result
+
             # メッセージ数で管理
             self.memory_messages()
 

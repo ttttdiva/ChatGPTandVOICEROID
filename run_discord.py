@@ -92,6 +92,16 @@ async def main(voice_msg, voice_client, user_id, ctx, image_base64_list=None):
             voice_msg = "今までどんなことを話していたっけ？30文字程度で教えて。"
         elif "検索して" in voice_msg:
             pass
+        elif "チャットモード" in voice_msg:
+            await ctx.send(f"Chatモードに切り替わりました。")
+            tts_manager.talk_message("Chatモードに切り替わりました。", None, voice_client)
+            llm_manager.switch_to_chat_mode()
+            return
+        elif "アシスタントモード" in voice_msg:
+            await ctx.send(f"Assistantsモードに切り替わりました。")
+            tts_manager.talk_message("Assistantsモードに切り替わりました。", None, voice_client)
+            llm_manager.switch_to_assistants_mode()
+            return
         elif tts_manager.hallucination(voice_msg):
             return
 
@@ -213,7 +223,7 @@ async def status(ctx):
 
     # 使用しているAPIの確認
     if llm_manager.LLM.use_chat_api:
-        api_s = "Completion"
+        api_s = "Chat Completion"
     else:
         api_s = "Assistants"
 

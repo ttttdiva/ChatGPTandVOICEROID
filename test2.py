@@ -1,6 +1,3 @@
-image_base64_list = []
-
-if image_base64_list:
-    print("aiueo")
-else:
-    print("wieiwne")
+user_input = "この画像を認識して！"
+if ["画像を添付しました。", "画像を認識して"] in user_input:
+    print("test")

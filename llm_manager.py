@@ -12,7 +12,7 @@ class LLMManager:
             config = yaml.safe_load(f)
         self.model = config['llm_model']
         self.system_prompt = ai_character + ai_dialogues
-        self.ai_name = ai_name[0]
+        self.ai_name = ai_name
         web_search = WebSearch(google_api_key, cx, ai_name, self.model)
         
         # chatを定義

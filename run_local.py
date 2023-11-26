@@ -81,6 +81,14 @@ def main():
                 voice_msg = "今までどんなことを話していたっけ？30文字程度で教えて。"
             elif "検索して" in voice_msg:
                 pass
+            elif "チャットモード" in voice_msg:
+                tts_manager.talk_message("Chatモードに切り替わりました。")
+                llm_manager.switch_to_chat_mode()
+                continue
+            elif "アシスタントモード" in voice_msg:
+                tts_manager.talk_message("Assistantsモードに切り替わりました。")
+                llm_manager.switch_to_assistants_mode()
+                continue
             elif tts_manager.hallucination(voice_msg):
                 continue
 
