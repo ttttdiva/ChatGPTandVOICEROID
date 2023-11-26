@@ -4,12 +4,13 @@ default_character: "ずんだもん"
 device_index: 1
 Text_Only: False
 tts_settings:
-  Assistant_Seika_flag: False
+  Assistant_Seika_flag: True
   Assistant_Seika: "\"%PROGRAMFILES%\\510Product\\AssistantSeika\\AssistantSeika.exe\""
   Assistant_Seika_path: "\"%PROGRAMFILES%\\510Product\\AssistantSeika\""
   SeikaSay2: "%PROGRAMFILES%\\510Product\\AssistantSeika\\SeikaSay2\\SeikaSay2.exe"
   SeikaCtl: "\"%PROGRAMFILES%\\510Product\\AssistantSeika\\SeikaCtl\\SeikaCtl.exe\""
   VOICEROID: "\"%PROGRAMFILES%\\AHS\\VOICEROID2\\VoiceroidEditor.exe\""
   VOICEVOX: "\"%LOCALAPPDATA%\\Programs\\VOICEVOX\\VOICEVOX.exe\""
+  COEIROINK: "\"D:\\tool\\COEIROINK_WIN_GPU_v.2.1.1\\COEIROINKv2.exe\""
 java_settings:
   java_home: "%PROGRAMFILES%\\Java\\jdk-21"
